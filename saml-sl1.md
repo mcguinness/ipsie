@@ -1,457 +1,533 @@
-# SAML 2.0 Web SSO – Constrained Interoperability Profile
+# Constrained Enterprise Profile of the SAML 2.0 Web Browser SSO Profile {#title}
 
-> **Status:** Draft (informative + normative sections called out below)
->
-> **Scope:** A deliberately constrained SAML 2.0 Web SSO profile designed to mirror OpenID Connect (OIDC) behavior **where possible** while remaining **SAML‑first**. Requirements are expressed in SAML terms; OIDC is referenced only for orientation in Appendix A.
+*OpenID Foundation Implementer’s Draft 1*
+Short Name: **SAML.EnterpriseProfile**
+Editors: **Karl McGuinness** (OpenID Foundation Contributor)
+License: **CC BY-SA 4.0**
 
----
-
-## 1. Abstract (Informative)
-
-This profile narrows the SAML 2.0 Web SSO feature set to ease interop with OIDC‑centric RPs while **staying 100% XML/SAML**. It:
-
-* Uses **HTTP‑Redirect** for requests and **HTTP‑POST** for responses (success and error).
-* Requires **signed Responses** and **signed Assertions**; allows **unsigned AuthnRequests** if the ACS is pre‑registered.
-* Standardizes on **XML metadata** for discovery and keys; **multiple signing keys SHOULD** be published concurrently to enable safe rotation.
-* Treats `Subject/NameID` as the canonical subject; requires OASIS **Subject Identifier Attributes** (`subject-id` or `pairwise-id`).
-* Minimizes profile attributes to **LDAP names**: `mail`, `givenName`, `sn`, `displayName`.
-* Adds precise processing rules for correlation, freshness, passive behavior, and errors.
+> **Status of This Document.** This document is an OpenID Foundation Implementer’s Draft. It is a work in progress and may change without notice. Implementers are encouraged to provide feedback and implementation experience.
 
 ---
 
-## 2. Notation & Conformance (Normative)
+## 1. Introduction {#introduction}
 
-* **MUST/SHOULD/MAY** are per RFC 2119.
-* Unless stated otherwise, requirements apply to both IdPs and RPs (SPs in SAML).
-* “RP” and “SP” are synonymous here; we prefer **SP** in normative text.
+This profile defines a **constrained enterprise** subset of the **SAML 2.0 Web Browser SSO Profile** that aims to provide **behavioral parity with OpenID Connect (OIDC)** while remaining a **subset of SAML2Int** (Kantara “SAML 2.0 Deployment Profile for Federation Interoperability”).
+It is designed for **single-enterprise control planes** where the same organization operates both the **Identity Provider (IdP)** and **Service Provider (SP)** (a.k.a. RP in OIDC terminology).
 
----
+### 1.1 Goals {#goals}
 
-## 3. Goals (Informative)
+* Preserve SAML2Int interoperability while aligning the end-to-end experience with OIDC semantics (e.g., **ACR**, **AMR**, **prompt-like** behaviors).
+* Reduce operational friction for controlled enterprise topologies by **relaxing** some SAML2Int requirements (e.g., **no mandatory signed AuthnRequests**, **no mandatory assertion encryption**, **no SLO**).
+* **Constrain** areas that improve reliability, rollover, and troubleshooting (e.g., **metadata freshness, key naming, exact ACS matching**).
 
-* Tighten SAML to predictable, widely‑implemented subsets.
-* Encourage key discovery, rotation, and robust metadata usage.
-* Make subject identifiers consistent and privacy‑preserving.
-* Keep attributes simple and LDAP‑named.
+### 1.2 Non-Goals {#non-goals}
 
----
-
-<a id="sec-5-1"></a>
-
-## 5. Metadata, Discovery, and Keys (Normative)
-
-### 5.1. HTTP‑Fetchable XML Metadata
-
-* IdPs and SPs **MUST** publish/consume SAML metadata over HTTPS.
-* Implementations **MUST** support metadata rooted at either **`<EntityDescriptor>`** or **`<EntitiesDescriptor>`**.
-
-<a id="sec-5-2"></a>
-
-### 5.2. Key Discovery and Rotation (XML‑Only)
-
-* Signing keys **MUST** be discoverable via `<KeyDescriptor use="signing">` in metadata.
-* **Multiple signing keys SHOULD** be present simultaneously to enable **pre‑publication** and **grace periods** during rotation.
-* Relying parties **MUST** honor `validUntil`/`cacheDuration` and **SHOULD** re‑fetch on unknown‑key signature failures.
-* This profile is **XML only**; non‑XML keying mechanisms are out of scope.
-
-### 5.3. Certificate Material and Key Sizes
-
-* Non‑key X.509 fields are not constrained here. Suggested practices: use **long‑lived, self‑signed**, not expired, and **avoid MD5/SHA‑1** certificate signatures.
-* **RSA** keys **MUST** be ≥ 2048 bits (**3072** RECOMMENDED). **EC** keys **MUST** be ≥ 256 bits.
-* IdP metadata **MUST** include at least one signing certificate (`<KeyDescriptor use="signing">` or no `use`).
+* This profile does **not** introduce new SAML extensions.
+* This profile does **not** mandate federation across unrelated organizations.
+* Logout profiles are **not required**.
 
 ---
 
-<a id="sec-6"></a>
+## 2. Notation and Conventions {#notation}
 
-## 6. Subject Identifiers (Normative)
+The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **MAY**, and **OPTIONAL** are to be interpreted as described in RFC 2119.
 
-### 6.1. Core Requirements
-
-* Every successful Assertion’s `<saml:Subject>` **MUST** contain `<saml:NameID>`.
-* For broad interop, `<saml:NameID>` **SHOULD** use `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent`.
-* The value of `<saml:NameID>` **SHOULD** be **equivalent** to the value emitted in the Subject Identifier Attribute(s) of §6.2 to keep a single notion of the subject.
-
-### 6.2. Subject Identifier Attributes (OASIS CS01 Conformance)
-
-IdPs and SPs **MUST** conform to **SAML V2.0 Subject Identifier Attributes Profile (CS01)** and **MUST include one or both** of:
-
-* **`urn:oasis:names:tc:SAML:attribute:subject-id`** — stable across SPs.
-* **`urn:oasis:names:tc:SAML:attribute:pairwise-id`** — unique per SP.
-
-**Encoding:** `NameFormat` **MUST** be `urn:oasis:names:tc:SAML:2.0:attrname-format:uri`; each Attribute has **exactly one** `xs:string` value.
-
-<a id="sec-6-3"></a>
-
-### 6.3. Pairwise and Public Models
-
-* **Public** model: IdP assigns the same ID to all SPs → **MUST** include `subject-id`.
-* **Pairwise** model: per‑SP unique ID → **MUST** include `pairwise-id`.
-* If both are present, SPs **SHOULD** prefer `pairwise-id` unless policy requires cross‑SP correlation.
-
-<a id="sec-6-4"></a>
-
-### 6.4. Scope Filtering (Optional)
-
-* IdPs **MAY** scope or filter identifier release by policy; any such indication **MUST** be honored by SPs.
-
-<a id="sec-6-5"></a>
-
-### 6.5. RP Expression of Identifier Requirements (Metadata)
-
-* SPs **MUST** declare identifier expectations via `md:Extensions/mdattr:EntityAttributes` (e.g., require `pairwise-id`, accept `subject-id`).
+“SAML2Int” refers to the **Kantara SAML 2.0 Deployment Profile for Federation Interoperability**.
+“Subject ID Profile” refers to **SAML V2.0 Subject Identifier Attributes Profile (CS01)**.
 
 ---
 
-<a id="sec-7"></a>
+## 3. Conformance Targets {#conformance}
 
-## 7. Attributes (User Profile) (Normative)
+Implementations claiming conformance to this profile **MUST** conform to:
 
-### 7.1. Emission Requirements (IdP)
+* **SAML2Int**, except where this profile explicitly **loosens** or **tightens** requirements.
+* **SAML V2.0 Core** and **Bindings** relevant to the Web Browser SSO Profile.
+* **SAML V2.0 Subject Identifier Attributes Profile (CS01)**.
+* **XML Signature**; algorithms as constrained herein.
+* **TLS 1.2 or higher** for all endpoints.
 
-* IdPs **MUST emit** user profile attributes using LDAP canonical names.
-* Attributes are **flat strings** (`xs:string`) with simple text content (no nested XML, no `xsi:type`).
+Conformance targets are **Identity Provider** and **Service Provider**.
 
-### 7.2. Standard Attribute Set (LDAP Canonical)
+---
 
-Only the following attributes are defined by this profile:
+## 4. High-Level Parity with OIDC (Non-Normative) {#parity-overview}
 
-| LDAP Name     | Description                                                       |
-| ------------- | ----------------------------------------------------------------- |
-| `mail`        | Primary email address.                                            |
-| `givenName`   | First/given name.                                                 |
-| `sn`          | Surname/family name.                                              |
-| `displayName` | Preferred display name; MAY equal `givenName + sn` or user label. |
+This profile aligns with common OIDC behaviors:
 
-**Non‑normative example**
+* **ACR parity**: `RequestedAuthnContext` with `Comparison="exact"` mirrors `acr_values` and the IdP returns the achieved `AuthnContextClassRef`.
+* **AMR parity**: IdP issues an **AMR attribute** (multi-valued) aligned to the OAuth AMR registry.
+* **Prompt parity**: `ForceAuthn="true"` ≅ `prompt=login`; `IsPassive="true"` ≅ `prompt=none`.
+* **Subject parity**: A single stable **NameID** (persistent) equals the selected **Subject Identifier Attribute** (`subject-id` or `pairwise-id`), analogous to OIDC `sub`.
+* **Audience parity**: Exactly one `AudienceRestriction/Audience` equals SP `entityID`, akin to OIDC `aud`.
+
+SP-initiated SSO is the **primary** flow (IdP-initiated MAY be supported; see §7.6).
+
+---
+
+## 5. Metadata Requirements {#metadata}
+
+### 5.1 Format and Transport {#metadata-format}
+
+* Metadata **MUST** be served with media type `application/samlmetadata+xml`.
+* Metadata **MUST** include `validUntil` **and** `cacheDuration`.
+* Consumers **MUST** cache per `cacheDuration` and **MUST** re-fetch and retry on signature failures where the signing key is unknown.
+
+### 5.2 Signing and Keys {#metadata-keys}
+
+* IdP metadata **MAY** be XML-signed and **MUST** be available over HTTPS.
+* SP metadata **MAY** omit `<KeyDescriptor>` entirely; publishing zero keys is permitted.
+* Each `<KeyDescriptor>` that is present **MUST** include a `ds:KeyName` that is a **stable key identifier**.
+* Implementations **SHOULD** publish multiple active signing keys to enable pre-publication and graceful rotation.
+
+### 5.3 Freshness {#metadata-freshness}
+
+* Values for `validUntil` and `cacheDuration` **MUST** be consistent with SAML2Int guidance.
+* On any signature verification failure due to an **unknown key**, the consumer **MUST** re-fetch metadata immediately.
+
+---
+
+## 6. Bindings, Endpoints, and Transport {#bindings}
+
+* **AuthnRequest from SP to IdP:** **HTTP-Redirect** binding **MUST** be used.
+
+  * Redirect binding **MUST** support **DEFLATE** and **URL-safe signature validation** per specification.
+* **Response from IdP to SP:** **HTTP-POST** binding **MUST** be used.
+* **Artifact binding:** **Not required** by this profile.
+* All endpoints **MUST** enforce **TLS 1.2+** with modern cipher suites; **HSTS** is **RECOMMENDED**.
+
+---
+
+## 7. AuthnRequest Requirements (SP → IdP) {#authnrequest}
+
+1. **Signing:** An SP **MUST NOT be required** to sign `AuthnRequest`. If present, signatures **MAY** be validated by the IdP.
+2. **Issuer:** `AuthnRequest/Issuer` **MUST** equal the SP’s `entityID`.
+3. **Destination:** `AuthnRequest/@Destination` **MUST** equal the IdP’s **Redirect SSO** endpoint.
+4. **ACS Matching:** The ACS endpoint is selected by the IdP using the rules in §9. Exact match is required.
+5. **NameIDPolicy:**
+
+   * **RECOMMENDED:** Omit `<NameIDPolicy>`.
+   * **ALTERNATIVE:** `<NameIDPolicy AllowCreate="true">` without a `Format` attribute.
+6. **RequestedAuthnContext (ACR):**
+
+   * If present, **MUST** use `Comparison="exact"` and one or more `AuthnContextClassRef` URIs.
+   * The IdP **MUST** return the achieved class(es) in the `AuthnStatement`.
+7. **ForceAuthn / IsPassive:**
+
+   * `ForceAuthn="true"` **MUST** be honored (≅ OIDC `prompt=login`).
+   * `IsPassive="true"` **MUST** be honored (≅ OIDC `prompt=none`).
+8. **RelayState:**
+
+   * If present, **MUST** be echoed by the IdP.
+   * **MUST** be no more than **80 bytes**.
+9. **IdP-Initiated Considerations:**
+
+   * This profile **allows** SP-initiated and **may** allow IdP-initiated (see §7.6, §12.3).
+10. **Request Correlation:**
+
+    * If the request contains an ID, and the IdP issues a success `Response`, the `Response/@InResponseTo` **MUST** equal the request ID.
+
+---
+
+## 8. Response Requirements (IdP → SP) {#response}
+
+1. **Binding:** IdP **MUST** use HTTP-POST.
+2. **Signing:** The `Response` **MUST** be XML-signed; the enclosed `Assertion` **MUST** also be XML-signed.
+3. **Recipient/Destination:**
+
+   * `Response/@Destination` (if present) and `SubjectConfirmationData/@Recipient` **MUST** equal the selected ACS URL from SP metadata.
+4. **Success Structure:** For `StatusCode=Success`, the `Response` **MUST** contain **exactly one** `Assertion` with:
+
+   * **exactly one** `Subject`
+   * **exactly one** `AuthnStatement`
+   * **exactly one** `AttributeStatement`
+     Other statement types (e.g., `AuthzDecisionStatement`) are **not permitted**.
+5. **Bearer Only:** All `SubjectConfirmation` elements **MUST** use `Method="urn:oasis:names:tc:SAML:2.0:cm:bearer"` and include `SubjectConfirmationData` with `Recipient`, `NotOnOrAfter`, and (for SP-initiated requests) `InResponseTo`.
+6. **AudienceRestriction:** **Exactly one** `AudienceRestriction` with **exactly one** `Audience`, equal to the SP’s `entityID`. No wildcards or multiple audiences.
+7. **Clock Skew & Lifetime:**
+
+   * Implementations **MUST** follow SAML2Int defaults for assertion validity and clock skew.
+   * **RECOMMENDED** practice: `NotOnOrAfter` ≤ **5 minutes**; clock skew ≤ **±300s**.
+
+---
+
+## 9. Assertion Content {#assertions}
+
+### 9.1 Subject & NameID {#subject-nameid}
+
+* Every successful `Assertion/Subject` **MUST** contain `NameID`.
+* IdP **MUST** use `NameID/@Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"`.
+* Exactly **one** **Subject Identifier Attribute** **MUST** be present: either
+
+  * `urn:oasis:names:tc:SAML:attribute:subject-id` **or**
+  * `urn:oasis:names:tc:SAML:attribute:pairwise-id`.
+* The **`NameID` value MUST equal** the value of the **emitted Subject Identifier Attribute** (global or pairwise). Only one subject notion exists in a given assertion.
+
+### 9.2 Subject Identifier Attributes Profile {#subject-id-profile}
+
+* IdPs and SPs **MUST** conform to **SAML V2.0 Subject Identifier Attributes Profile (CS01)**.
+* Deployments **MUST** support both **global** (`subject-id`) and **pairwise** (`pairwise-id`) subject models. The assertion includes **exactly one** of them.
+
+### 9.3 Authentication Statement (ACR & AMR) {#authnstatement}
+
+* Successful assertions **MUST** include an `AuthnStatement` with:
+
+  * `AuthnInstant` (time of end-user authentication), and
+  * `AuthnContext` containing **at least one** `AuthnContextClassRef` (the achieved ACR).
+* **AMR Attribute (multi-valued):**
+
+  * IdP **MUST** issue an attribute named **`https://openid.net/ipsi/amr`**
+    with `NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri"`; values **MUST** be tokens from the **OAuth AMR Registry**.
+  * **Compatibility:** SPs **MAY** accept the legacy alias `https://openid.net/ipsie/amr` if present.
+
+### 9.4 Conditions & Session {#conditions-session}
+
+* `Conditions` **MUST** set appropriate `NotBefore/NotOnOrAfter` consistent with SAML2Int defaults.
+* The `AuthnStatement` **SHOULD** contain `SessionIndex`.
+* If `SessionNotOnOrAfter` is present, the SP **MUST** treat it as the **maximum RP session lifetime**. Upon expiry, SP **MUST** re-authenticate the user.
+* **Data Minimization:** Assertions **SHOULD NOT** contain attributes beyond those required by the SP’s minimal bundle (§10) to reduce PII exposure (encryption is not required by this profile).
+
+### 9.5 Replay Protection {#replay}
+
+* SPs **MUST** enforce one-time use of assertion IDs within their validity window (cache until `NotOnOrAfter` plus skew).
+* For SP-initiated success responses, `Response/@InResponseTo` **MUST** equal the request ID.
+
+---
+
+## 10. Attribute Bundle (Directory/LDAP-Oriented) {#attributes}
+
+To mirror common OIDC claims while aligning with SAML2Int’s directory naming guidance, this profile **RECOMMENDS** (but does not require) the following **LDAP-style** attribute names when such data is needed:
+
+| Purpose            | Attribute Name (URI NameFormat)                 | Notes                                            |        |
+| ------------------ | ----------------------------------------------- | ------------------------------------------------ | ------ |
+| Subject (global)   | `urn:oasis:names:tc:SAML:attribute:subject-id`  | **MUST** equal NameID (persistent) when selected |        |
+| Subject (pairwise) | `urn:oasis:names:tc:SAML:attribute:pairwise-id` | **MUST** equal NameID (persistent) when selected |        |
+| AMR                | `https://openid.net/ipsi/amr`                   | Multi-valued; OAuth AMR registry tokens          |        |
+| Email              | `urn:oid:0.9.2342.19200300.100.1.3`             | `mail`                                           |        |
+| Email Verified     | `urn:oid:1.3.6.1.4.1.5923.1.1.1.13`             | boolean as string “true                          | false” |
+| Given Name         | `urn:oid:2.5.4.42`                              | `givenName`                                      |        |
+| Surname            | `urn:oid:2.5.4.4`                               | `sn`                                             |        |
+| Display Name       | `urn:oid:2.16.840.1.113730.3.1.241`             | `displayName`                                    |        |
+
+> Deployments **SHOULD** request only what they need and IdPs **SHOULD** minimize release.
+
+---
+
+## 11. Cryptographic Requirements {#crypto}
+
+* **SHA-1 is NOT allowed** for signatures or digests.
+* Algorithms and key sizes **MUST** follow SAML2Int requirements (e.g., SHA-256+; RSA-PSS and/or ECDSA P-256 where applicable).
+* All signatures **MUST** be verifiable against currently valid metadata keys; on unknown keys, **re-fetch** metadata (§5.3).
+
+---
+
+## 12. Session and Logout {#session-logout}
+
+* **Single Logout (SLO)** is **not required** for IdP or SP.
+* The presence of `SessionNotOnOrAfter` **MUST** bound the RP session; SP **MUST** force re-authentication after expiry.
+* Implementations **MAY** offer app-local sign-out mechanisms; back-channel/front-channel logout is out-of-scope.
+
+---
+
+## 13. ACS Selection & Exact Matching {#acs}
+
+* The IdP **MUST** select the ACS endpoint by **exact string match** against one of the SP’s registered ACS locations.
+* Multiple ACS endpoints **MAY** be published; the IdP **MAY** use the `AssertionConsumerServiceIndex` when provided.
+* Wildcards, prefix matching, or dynamic ACS values are **not permitted**.
+
+---
+
+## 14. Error Semantics and OIDC Mappings {#errors}
+
+SPs often implement OIDC-style UX. The following **normative mappings** apply:
+
+| SAML Status / Condition            | Typical Cause                                    | OIDC-like Error for RP Handling                |
+| ---------------------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| `Responder` + `NoPassive`          | User interaction required while `IsPassive=true` | `interaction_required`                         |
+| `Responder` + `AuthnFailed`        | User failed authentication                       | `access_denied` (or `login_required` on retry) |
+| `Requester` + `RequestDenied`      | Policy or request invalid                        | `invalid_request`                              |
+| `Requester` + `UnsupportedBinding` | Bad binding                                      | `invalid_request`                              |
+| `Responder` + `PartialLogout`      | (If logout attempted)                            | `server_error`                                 |
+
+---
+
+## 15. SAML2Int Delta Table (Normative) {#deltas}
+
+**Legend:** Kept = unchanged; Loosened = relaxed vs SAML2Int; Tightened = stricter than SAML2Int; Omitted = not required.
+
+| Area                                           | This Profile                         | Delta              |
+| ---------------------------------------------- | ------------------------------------ | ------------------ |
+| Signed AuthnRequest required                   | **Not required**; optional           | **Loosened**       |
+| Assertion Encryption                           | **Not required**                     | **Loosened**       |
+| Single Logout                                  | **Not required**                     | **Omitted**        |
+| Metadata `validUntil`/`cacheDuration`          | **Required**                         | **Tightened**      |
+| Metadata media type                            | `application/samlmetadata+xml`       | **Tightened**      |
+| `<KeyDescriptor>/ds:KeyName`                   | **Required when present**            | **Tightened**      |
+| Multiple signing keys in metadata              | **SHOULD**                           | **Tightened**      |
+| Unknown-key re-fetch on signature fail         | **MUST**                             | **Tightened**      |
+| NameID Format                                  | **Persistent** and equals Subject ID | **Tightened**      |
+| Subject Identifier Attributes (CS01)           | **MUST** support (one in assertion)  | **Kept/Tightened** |
+| AudienceRestriction                            | Exactly one, equals SP `entityID`    | **Tightened**      |
+| SP Request Binding                             | **HTTP-Redirect** only               | **Tightened**      |
+| IdP Response Binding                           | **HTTP-POST** only                   | **Tightened**      |
+| Response + Assertion both signed               | **MUST**                             | **Kept/Tightened** |
+| Recipient/Destination exact ACS                | **MUST**                             | **Tightened**      |
+| RequestedAuthnContext comparison               | **exact** only                       | **Tightened**      |
+| ForceAuthn / IsPassive                         | **MUST honor**                       | **Kept/Tightened** |
+| Bearer SubjectConfirmation only                | **MUST**                             | **Tightened**      |
+| Success shape (1 Assertion/Subject/Authn/Attr) | **MUST**                             | **Tightened**      |
+| RelayState ≤ 80 bytes, echoed                  | **MUST**                             | **Kept/Tightened** |
+| SHA-1 allowed                                  | **No**                               | **Tightened**      |
+
+---
+
+## 16. OIDC Feature Equivalence (Informative) {#oidc-map}
+
+| OIDC Concept          | SAML Mechanism in this Profile                                   |
+| --------------------- | ---------------------------------------------------------------- |
+| `acr_values` request  | `RequestedAuthnContext` with `Comparison="exact"` and class refs |
+| Returned `acr`        | `AuthnContextClassRef` in `AuthnStatement`                       |
+| `amr` claim           | AMR Attribute `https://openid.net/ipsi/amr` (multi-valued)       |
+| `prompt=login`        | `ForceAuthn="true"`                                              |
+| `prompt=none`         | `IsPassive="true"`                                               |
+| `sub`                 | `NameID` (persistent) == `subject-id` or `pairwise-id`           |
+| `aud`                 | `AudienceRestriction/Audience` == SP `entityID`                  |
+| `state`               | `RelayState` (≤80 bytes, echoed)                                 |
+| `iat` / `exp`         | `IssueInstant`; `Conditions/NotOnOrAfter` (+ clock skew)         |
+| JWS/JWE               | XML Signature; (encryption not required in this profile)         |
+| IdP-init login parity | SP-init is primary; IdP-init **MAY** be supported per deployment |
+
+---
+
+## 17. Informative Examples {#examples}
+
+> **Note:** Examples are illustrative only. Line breaks and indentation are for readability.
+
+### 17.1 SP-Initiated AuthnRequest (HTTP-Redirect) {#ex-request}
 
 ```xml
-<AttributeStatement>
-  <Attribute Name="mail"><AttributeValue>ava@example.com</AttributeValue></Attribute>
-  <Attribute Name="givenName"><AttributeValue>Ava</AttributeValue></Attribute>
-  <Attribute Name="sn"><AttributeValue>Nguyen</AttributeValue></Attribute>
-  <Attribute Name="displayName"><AttributeValue>Ava Nguyen</AttributeValue></Attribute>
-</AttributeStatement>
+<samlp:AuthnRequest
+    xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+    ID="_a12345"
+    Version="2.0"
+    IssueInstant="2025-10-25T20:00:00Z"
+    Destination="https://idp.example.com/sso/redirect"
+    ForceAuthn="true"
+    IsPassive="false">
+  <saml:Issuer>https://sp.example.com/saml/metadata</saml:Issuer>
+
+  <!-- Omit NameIDPolicy (RECOMMENDED) or include AllowCreate="true" -->
+  <!-- <samlp:NameIDPolicy AllowCreate="true"/> -->
+
+  <samlp:RequestedAuthnContext Comparison="exact">
+    <saml:AuthnContextClassRef>https://refeds.org/profile/mfa</saml:AuthnContextClassRef>
+  </samlp:RequestedAuthnContext>
+</samlp:AuthnRequest>
 ```
 
-### 7.3. Receive‑Side Interoperability (Parsing)
-
-* SPs **MUST** accept arbitrary `Attribute@Name` (string) and `NameFormat` (anyURI).
-* `FriendlyName` is descriptive only; **MUST NOT** be used for comparisons/logic.
-* `AttributeValue` simple text **MUST** be accepted; complex content is OPTIONAL.
-* Common aliases accepted on ingest (informative):
-
-  * `mail` ⇢ `email`, `emailAddress`, `userPrincipalName`
-  * `givenName` ⇢ `firstName`, `gn`
-  * `sn` ⇢ `surname`, `lastName`, `familyName`
-  * `displayName` ⇢ `name`, `cn`
-
----
-
-<a id="sec-9-1"></a>
-
-## 9. Bindings and Messages (Normative)
-
-### 9.1. Request Binding (SP → IdP)
-
-* **MUST** use **HTTP‑Redirect** for `AuthnRequest`.
-* **Unsigned requests allowed**: if the ACS URL is **pre‑registered** in SP metadata (§9.1.1), the `AuthnRequest` **NEED NOT** be signed. If signed, IdP **MAY** validate.
-* `Issuer` **MUST** equal the SP entityID.
-* **Receiver tolerance**: When processing an `AuthnRequest`, IdPs **MAY ignore** `Consent`, `Conditions`, `Destination`, and `ProviderName`. Security checks elsewhere still apply.
-
-<a id="sec-9-1-1"></a>
-
-#### 9.1.1. ACS URL Registration (Redirect‑URI Analogue)
-
-* SP metadata **MUST** register one or more ACS endpoints (binding + URL). IdPs **MUST** enforce that `AssertionConsumerServiceURL` (if present) equals a registered location; else reject.
-* Pre‑registered ACS enables **unsigned** AuthnRequests similar to OIDC redirect URI registration.
-
-<a id="sec-9-2"></a>
-
-### 9.2. Response Binding (IdP → SP)
-
-* **MUST** use **HTTP‑POST** for **success and error** responses.
-* The `Response` **MUST** be **signed**; the enclosed `Assertion` **MUST** also be **signed**.
-* `Recipient`/`Destination` **MUST** equal the registered ACS.
-
-**SubjectConfirmation (Bearer‑only)**
-
-* Only **Bearer** assertions are supported. Every `SubjectConfirmation` **MUST** have `Method="urn:oasis:names:tc:SAML:2.0:cm:bearer"` and include `SubjectConfirmationData` with `Recipient`, `NotOnOrAfter`, and (for RP‑initiated login) `InResponseTo`.
-* Assertions with other methods **MUST** be rejected.
-
-**Correlation (RP‑initiated login)**
-
-* `Response@InResponseTo` **MUST** equal the initiating `AuthnRequest@ID`.
-* Each Bearer `SubjectConfirmationData@InResponseTo` **MUST** equal that same ID.
-* SPs **MUST** verify correlation and reject unmatched responses.
-
-**Non‑normative example**
+### 17.2 Success Response (HTTP-POST), Single Assertion {#ex-response}
 
 ```xml
-<samlp:AuthnRequest ID="_req123" .../>
-<samlp:Response InResponseTo="_req123" ...>
-  <saml:Assertion ...>
+<samlp:Response
+    xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+    xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+    ID="_r56789"
+    Version="2.0"
+    IssueInstant="2025-10-25T20:00:02Z"
+    Destination="https://sp.example.com/saml/acs"
+    InResponseTo="_a12345">
+  <saml:Issuer>https://idp.example.com/saml/metadata</saml:Issuer>
+
+  <!-- XML Signature over Response here -->
+
+  <samlp:Status>
+    <samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/>
+  </samlp:Status>
+
+  <saml:Assertion ID="_A1" IssueInstant="2025-10-25T20:00:02Z" Version="2.0">
+    <saml:Issuer>https://idp.example.com/saml/metadata</saml:Issuer>
+
+    <!-- XML Signature over Assertion here -->
+
     <saml:Subject>
-      <saml:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">A1B2C3...</saml:NameID>
+      <!-- NameID persistent and equals subject-id attribute -->
+      <saml:NameID Format="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">
+        3f0a9c0b-5a2e-4f2a-9e1a-2b2c7f1c7e10
+      </saml:NameID>
       <saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer">
-        <saml:SubjectConfirmationData InResponseTo="_req123" Recipient="https://rp.example.com/saml/acs" NotOnOrAfter="..."/>
+        <saml:SubjectConfirmationData
+            InResponseTo="_a12345"
+            Recipient="https://sp.example.com/saml/acs"
+            NotOnOrAfter="2025-10-25T20:05:02Z"/>
       </saml:SubjectConfirmation>
     </saml:Subject>
+
+    <saml:Conditions NotBefore="2025-10-25T20:00:02Z" NotOnOrAfter="2025-10-25T20:05:02Z">
+      <saml:AudienceRestriction>
+        <saml:Audience>https://sp.example.com/saml/metadata</saml:Audience>
+      </saml:AudienceRestriction>
+    </saml:Conditions>
+
+    <saml:AuthnStatement AuthnInstant="2025-10-25T19:59:40Z" SessionIndex="_S123" SessionNotOnOrAfter="2025-10-26T03:59:40Z">
+      <saml:AuthnContext>
+        <saml:AuthnContextClassRef>https://refeds.org/profile/mfa</saml:AuthnContextClassRef>
+      </saml:AuthnContext>
+    </saml:AuthnStatement>
+
+    <saml:AttributeStatement>
+      <!-- Subject Identifier Attribute (global). Exactly one of subject-id or pairwise-id -->
+      <saml:Attribute
+          Name="urn:oasis:names:tc:SAML:attribute:subject-id"
+          NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
+        <saml:AttributeValue>3f0a9c0b-5a2e-4f2a-9e1a-2b2c7f1c7e10</saml:AttributeValue>
+      </saml:Attribute>
+
+      <!-- AMR Attribute (multi-valued) -->
+      <saml:Attribute
+          Name="https://openid.net/ipsi/amr"
+          NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
+        <saml:AttributeValue>pwd</saml:AttributeValue>
+        <saml:AttributeValue>otp</saml:AttributeValue>
+      </saml:Attribute>
+
+      <!-- Optional directory-style attributes -->
+      <saml:Attribute Name="urn:oid:0.9.2342.19200300.100.1.3">
+        <saml:AttributeValue>user@example.com</saml:AttributeValue>
+      </saml:Attribute>
+      <saml:Attribute Name="urn:oid:2.5.4.42">
+        <saml:AttributeValue>Alice</saml:AttributeValue>
+      </saml:Attribute>
+      <saml:Attribute Name="urn:oid:2.5.4.4">
+        <saml:AttributeValue>Example</saml:AttributeValue>
+      </saml:Attribute>
+    </saml:AttributeStatement>
   </saml:Assertion>
 </samlp:Response>
 ```
 
-### 9.3. Encryption
-
-* Assertion encryption is **OPTIONAL**; if used, publish an encryption key via `<KeyDescriptor use="encryption">`.
-
-<a id="sec-9-4"></a>
-
-### 9.4. Error Responses (SAML‑First; Informative OIDC Mapping)
-
-All errors **MUST** be POSTed to the registered ACS with a signed `Response` lacking an `Assertion`.
-
-**Canonical SAML errors and mapping to OpenID Connect (informative)**
-
-| SAML StatusCode (Top) | SAML StatusCode (Secondary)                                                                                        | When to use                                        | OIDC mapping (if any)                        |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | -------------------------------------------- |
-| `Requester`           | `RequestUnsupported` / `UnsupportedBinding` / `RequestVersionTooLow/TooHigh/Deprecated` / `InvalidAttrNameOrValue` | Malformed/unsupported request, binding, or version | `invalid_request`                            |
-| `Requester`           | `RequestDenied`                                                                                                    | SP unauthorized or policy deny                     | `unauthorized_client` or `access_denied`     |
-| `Requester`           | `NoAuthnContext`                                                                                                   | Required context cannot be met                     | No exact equivalent (often `access_denied`)  |
-| `Requester`           | `UnknownPrincipal`                                                                                                 | Unknown/disabled SP or untrusted issuer            | `invalid_client`                             |
-| `Responder`           | *(none)*                                                                                                           | IdP internal error                                 | `server_error`                               |
-| `Responder`           | *(none)*                                                                                                           | IdP temporarily unavailable                        | `temporarily_unavailable`                    |
-| `Responder`           | `NoPassive`                                                                                                        | `IsPassive=true` but interaction needed            | `login_required` / `interaction_required`    |
-| `Responder`           | `AuthnFailed`                                                                                                      | User authentication failed                         | No single equivalent (often `access_denied`) |
-
----
-
-## 10. Authentication Semantics (Normative)
-
-<a id="sec-10-1"></a>
-
-### 10.1. Requested Authentication Context
-
-* SPs **MUST** request required auth strength using `RequestedAuthnContext` with `Comparison="exact"` and one or more `AuthnContextClassRef` URIs.
-* IdPs **MUST** return the **achieved** class in `AuthnContextClassRef`.
-
-<a id="sec-10-2"></a>
-
-### 10.2. Forced Re‑authentication
-
-* To force re‑auth, SPs **MUST** set `ForceAuthn="true"` on `AuthnRequest` (analogous to `prompt=login`).
-
-<a id="sec-10-3"></a>
-
-### 10.3. Freshness
-
-* SPs **SHOULD** evaluate freshness as `now() − AuthnInstant ≤ policy_freshness policy + skew`, where **policy_freshness policy** is deployment‑defined and **skew** accounts for clock drift (RECOMMENDED default **±120s**).
-
-### 10.5. Example AuthnRequest (Unsigned; ACS pre‑registered)
-
-````xml
-<samlp:AuthnRequest ID="_a1b2c3" Version="2.0" IssueInstant="2025-10-21T19:30:00Z"
-  Destination="https://idp.example.com/SAML2/SSO/Redirect"
-  AssertionConsumerServiceURL="https://sp.example.com/saml/acs"
-  ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
-  ForceAuthn="true">
-  <saml:Issuer>https://sp.example.com/metadata</saml:Issuer>
-  <!-- NameIDPolicy intentionally omitted per §10.7 -->
-  <samlp:RequestedAuthnContext Comparison="exact">
-    <saml:AuthnContextClassRef>urn:example:acr:aal2</saml:AuthnContextClassRef>
-  </samlp:RequestedAuthnContext>
-</samlp:AuthnRequest>
-``` Example AuthnRequest (Unsigned; ACS pre‑registered)
-```xml
-<samlp:AuthnRequest ID="_a1b2c3" Version="2.0" IssueInstant="2025-10-21T19:30:00Z"
-  Destination="https://idp.example.com/SAML2/SSO/Redirect"
-  AssertionConsumerServiceURL="https://sp.example.com/saml/acs"
-  ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
-  ForceAuthn="true">
-  <saml:Issuer>https://sp.example.com/metadata</saml:Issuer>
-  <!-- NameIDPolicy intentionally omitted per §10.7 -->
-  <samlp:RequestedAuthnContext Comparison="exact">
-    <saml:AuthnContextClassRef>urn:example:acr:aal2</saml:AuthnContextClassRef>
-  </samlp:RequestedAuthnContext>
-</samlp:AuthnRequest>
-````
-
-### 10.6. Passive Requests (`IsPassive`)
-
-* IdPs **MUST** support `IsPassive` in `AuthnRequest` per SAML2Core. With `IsPassive="true"`, no user interaction is permitted: success only if an existing session satisfies the request; else respond `Responder`→`NoPassive`.
-
-### 10.7. NameIDPolicy Requirements
-
-* `AuthnRequest` **MUST** either **omit** `<NameIDPolicy>` (**RECOMMENDED**) **or** include `<NameIDPolicy AllowCreate="true">` **without** a `Format` attribute.
-
-<a id="sec-10-8"></a>
-
-### 10.8. Authentication Statement (Mandatory)
-
-* Successful Assertions **MUST** include `<saml:AuthnStatement>` with:
-
-  * `AuthnInstant` (time of end‑user auth), and
-  * `AuthnContext` containing at least one `AuthnContextClassRef` (the **achieved** class).
-* `SessionIndex` **MAY** be included for logout correlation.
-* `SessionNotOnOrAfter` **MAY** be included. If present, the SP **MUST** treat it as a hard expiry and **at or before** that timestamp **redirect the user to the IdP** to extend (fresh response) or close the session; the SP **MUST NOT** treat the session as valid beyond that time without a round‑trip to the IdP.
-* Freshness processing: see §10.3 (age + skew guidance).
-
-<a id="sec-10-9"></a>
-
-### 10.9. Assertion Structure (Success Responses)
-
-For `StatusCode=Success`, the `Response` **MUST** contain **exactly one** `Assertion` with:
-
-* **exactly one** `Subject`;
-* **exactly one** `AuthnStatement` (per §10.8);
-* **exactly one** `AttributeStatement` (per §7).
-  Other statement types (e.g., `AuthzDecisionStatement`) are **not permitted** in success responses.
-
-### 10.10. Authentication Method Reference (AMR) Attribute (Mandatory)
-
-* Identity Providers **MUST** emit a SAML Attribute named **`https://openid.net/ipsie/amr`** conveying the set of **Authentication Method References (AMR)** that were actually verified for the end‑user in producing the assertion.
-* **Value syntax:** flat **`xs:string`** tokens taken from the **OAuth 2.0 AMR values** registry (e.g., `pwd`, `otp`, `sms`, `mfa`, `hwk`, etc.).
-* **Cardinality:** to express multiple AMRs, the IdP **MUST repeat** the `<saml:Attribute Name="https://openid.net/ipsie/amr">` element, with **one** `<saml:AttributeValue>` per element. Do **not** use complex XML.
-* **Placement:** AMR values **MUST** be included in the single `AttributeStatement` required by §10.9 and generated in the same Assertion that contains the `AuthnStatement`.
-* **Processing (SP):** Relying Parties **MUST** be able to consume this attribute and may enforce local policy based on the presence of specific AMR tokens.
-* **Relationship to OIDC:** Informatively corresponds to the OIDC `amr` claim; this profile expresses it as a SAML Attribute with the exact `Name` URI above.
-
-**Non‑normative example (multiple AMRs)**
+### 17.3 SP Metadata (excerpt) {#ex-sp-metadata}
 
 ```xml
-<saml:AttributeStatement>
-  <!-- Profile attributes (mail/givenName/sn/displayName) -->
-  <saml:Attribute Name="mail"><saml:AttributeValue>ava@example.com</saml:AttributeValue></saml:Attribute>
-  <saml:Attribute Name="givenName"><saml:AttributeValue>Ava</saml:AttributeValue></saml:Attribute>
-  <saml:Attribute Name="sn"><saml:AttributeValue>Nguyen</saml:AttributeValue></saml:Attribute>
-  <saml:Attribute Name="displayName"><saml:AttributeValue>Ava Nguyen</saml:AttributeValue></saml:Attribute>
-  <!-- AMR values (repeat the Attribute for each token) -->
-  <saml:Attribute Name="https://openid.net/ipsie/amr"><saml:AttributeValue>pwd</saml:AttributeValue></saml:Attribute>
-  <saml:Attribute Name="https://openid.net/ipsie/amr"><saml:AttributeValue>otp</saml:AttributeValue></saml:Attribute>
-</saml:AttributeStatement>
+<EntityDescriptor
+    xmlns="urn:oasis:names:tc:SAML:2.0:metadata"
+    entityID="https://sp.example.com/saml/metadata"
+    validUntil="2025-11-08T00:00:00Z"
+    cacheDuration="PT168H">
+  <SPSSODescriptor AuthnRequestsSigned="false" WantAssertionsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+
+    <!-- Zero KeyDescriptor is permitted by this profile -->
+    <!-- <KeyDescriptor use="signing"> ... <ds:KeyName>sp-key-2025-10</ds:KeyName> ... </KeyDescriptor> -->
+
+    <AssertionConsumerService
+        index="0"
+        isDefault="true"
+        Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+        Location="https://sp.example.com/saml/acs"/>
+    <AssertionConsumerService
+        index="1"
+        Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+        Location="https://sp.example.com/saml/acs/alt"/>
+  </SPSSODescriptor>
+</EntityDescriptor>
+```
+
+### 17.4 IdP Metadata (excerpt) {#ex-idp-metadata}
+
+```xml
+<EntityDescriptor
+    xmlns="urn:oasis:names:tc:SAML:2.0:metadata"
+    entityID="https://idp.example.com/saml/metadata"
+    validUntil="2025-11-08T00:00:00Z"
+    cacheDuration="PT168H">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+        <ds:KeyName>idp-key-2025-10</ds:KeyName>
+        <!-- ds:X509Data omitted -->
+      </ds:KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService
+        Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+        Location="https://idp.example.com/sso/redirect"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>
 ```
 
 ---
 
-## 11. Security Considerations (Informative)
+## 18. Security Considerations {#security}
 
-* Limit clock skew (default ±2 minutes). Enforce one‑time use of assertion IDs.
-* Prefer pairwise identifiers for privacy where feasible.
-
-## 12. Privacy Considerations (Informative)
-
-* Minimize attribute release; avoid sensitive attributes unless necessary and consented.
-
-## 13. IANA / Well‑Known (Informative)
-
-* Non‑standard suggestion: `/.well-known/saml-metadata` as a stable human‑guessable location (registration out of scope).
-
-## 14. Interoperability Guidance (Informative)
-
-* XML is authoritative; non‑XML keying is out of scope.
-* Keep ACS URLs stable; use entityID as sole Audience.
-
-## 15. Cryptographic Algorithms (Normative)
-
-**Digest algorithms (XML Signature)** — Implementations **MUST** support:
-
-* `http://www.w3.org/2001/04/xmlenc#sha256`
-
-**Signature algorithms (XML Signature)** — Implementations **MUST** support:
-
-* `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256`
-
-**Additional signature algorithms (XML Signature)** — Implementations **SHOULD** support:
-
-* `http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256`
-
-**Block encryption (XML Encryption)** — Implementations **SHOULD** support:
-
-* `http://www.w3.org/2009/xmlenc11#aes128-gcm`
-* `http://www.w3.org/2009/xmlenc11#aes256-gcm`
-
-**Backwards‑compatibility block encryption (XML Encryption)** — Implementations **MAY** support (legacy only):
-
-* `http://www.w3.org/2001/04/xmlenc#aes128-cbc`
-* `http://www.w3.org/2001/04/xmlenc#aes256-cbc`
-
-**Key transport (XML Encryption)** — Implementations **MUST** support:
-
-* `http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p`
-* `http://www.w3.org/2009/xmlenc11#rsa-oaep`
-* DigestMethod support for RSA‑OAEP: `http://www.w3.org/2001/04/xmlenc#sha256` and `http://www.w3.org/2000/09/xmldsig#sha1`.
-* Default MGF1 with SHA‑1 for `xmlenc11#rsa-oaep` **MUST** be supported.
-
-**Deny/disable list (configurable)** — Implementations **MUST** be able to disable:
-
-* Digest: `http://www.w3.org/2001/04/xmldsig-more#md5`
-* Signature: `http://www.w3.org/2001/04/xmldsig-more#rsa-md5`
-* Key Transport: `http://www.w3.org/2001/04/xmlenc#rsa-1_5`
+* Because assertion encryption is **not required**, deployments **MUST** apply **data minimization** and transport-layer protection.
+* Keys **MUST** be rotated regularly; `ds:KeyName` **MUST** be stable across publication cycles.
+* **SHA-1 is prohibited**; use modern algorithms compliant with SAML2Int.
+* Implement robust anti-replay caches and strict audience and recipient checks.
 
 ---
 
-## 16. References (Informative)
+## 19. Privacy Considerations {#privacy}
 
-* **SAML2Core**, **SAML2Meta**, **SAML Bindings**, **SAML Profiles** (OASIS)
-* **SAML V2.0 Subject Identifier Attributes Profile** (OASIS CS01)
-* **XML Signature** (W3C), **XML Encryption** (W3C), **RFC 4051** (URIs for XML Security)
-* **RFC 7457** (TLS attacks), **Applied Crypto Hardening**
-
----
-
-## Appendix A. SAML ↔ OIDC Feature Summary (Informative)
-
-SAML requirements are authoritative; OIDC parallels are for orientation only.
-
-| SAML feature                                                        | Where defined                          | Closest OIDC concept            | Notes                                                       |
-| ------------------------------------------------------------------- | -------------------------------------- | ------------------------------- | ----------------------------------------------------------- |
-| **Metadata & keys** (XML; overlapping keys for rotation)            | [§5.1–§5.3](#sec-5-1)                  | Provider config & jwk endpoint  | HTTP‑fetchable config & rotation; this profile is XML‑only. |
-| **Subject identifier** (`NameID` + `subject-id`/`pairwise-id`)      | [§6](#sec-6)                           | `sub` (public/pairwise)         | NameID is canonical subject; attributes per OASIS CS01.     |
-| **Pairwise vs public**                                              | [§6.3–§6.4](#sec-6-3)                  | Pairwise/public modes           | Pairwise is per‑SP; no sector_identifier_uri.               |
-| **RP identifier requirements via metadata**                         | [§6.5](#sec-6-5)                       | Client metadata                 | SP declares `pairwise-id` vs `subject-id` needs.            |
-| **Request binding** (Redirect; unsigned permitted with ACS pre‑reg) | [§9.1](#sec-9-1)                       | Authorization Request           | ACS pre‑registration ≈ redirect_uri registration.           |
-| **Response binding** (POST; dual‑signed)                            | [§9.2](#sec-9-2)                       | Authz response + ID Token       | Bearer only.                                                |
-| **Error signaling** (SAML Status; mapping table)                    | [§9.4](#sec-9-4)                       | Authorization errors            | Mapping is informative.                                     |
-| **Requested authn context**                                         | [§10.1](#sec-10-1)                     | `acr_values`                    | Achieved class returned.                                    |
-| **Forced re‑auth**                                                  | [§10.2](#sec-10-2)                     | `prompt=login`                  | Via `ForceAuthn=true`.                                      |
-| **Passive**                                                         | [§10.6](#sec-10-6)                     | `prompt=none`                   | Non‑success → `Responder/NoPassive`.                        |
-| **Freshness**                                                       | [§10.3](#sec-10-3), [§10.8](#sec-10-8) | `freshness policy`, `auth_time` | Age check w/ skew.                                          |
-| **Profile attributes** (LDAP: mail/givenName/sn/displayName)        | [§7](#sec-7)                           | Standard profile claims         | Flat strings; liberal ingest.                               |
-| **Assertion cardinality** (success)                                 | [§10.9](#sec-10-9)                     | Single ID Token + claims        | Exactly 1 assertion, 1 subject, 1 authn, 1 attribute stmt.  |
-| **Session expiry** (`SessionNotOnOrAfter`)                          | [§10.8](#sec-10-8)                     | Token expiry                    | RP must round‑trip to IdP at/before expiry.                 |
+* Release only the minimal attribute bundle necessary for the SP.
+* Prefer **pairwise** subject identifiers when cross-SP correlation is a concern; when **global** is used, ensure contractual controls.
+* Respect local policies and legal obligations for user notice and consent.
 
 ---
 
-## Appendix B. Comparison with Kantara Profiles (Informative)
+## 20. IANA / Registry Considerations {#iana}
 
-**Legend:** **Aligned** = matches intent/requirement; **Stricter** = stronger than profile; **Looser** = permits more; **Missing** = not specified here. Clause references are indicative.
+This profile defines no new registries. It **reuses** the **OAuth AMR Registry** tokens in the AMR attribute.
 
-| Topic                               | This profile                       | saml2int (clause)          | fedinterop (clause)                                      | Disposition             | Notes                                                                                                 |
-| ----------------------------------- | ---------------------------------- | -------------------------- | -------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------- |
-| **Metadata form & fetch**           | [§5.1–§5.3](#sec-5-1)              | §2.2 Metadata & Trust Mgmt | §2.2.1–2.2.2; [IIP‑MD02], [IIP‑MD05]–[IIP‑MD06]          | **Aligned**             | XML metadata; accept `EntityDescriptor` or `EntitiesDescriptor` roots.                                |
-| **Key discovery & rotation**        | [§5.2](#sec-5-2)                   | §2.2 rollover guidance     | [IIP‑MD07]–[IIP‑MD08] rollover                           | **Aligned / Stricter**  | Concurrent keys **SHOULD** be present; fedinterop requires consumers to handle multiple.              |
-| **Algorithm MTI set**               | §15                                | §2.3 algorithms            | §2.5; [IIP‑ALG01]…[IIP‑ALG08]                            | **Stricter**            | MTI digest/sign/transport, AES‑GCM SHOULD, legacy CBC MAY with warnings; deny‑list MD5/RSA1_5.        |
-| **Bindings**                        | [§9.1](#sec-9-1), [§9.2](#sec-9-2) | §3.1 Web Browser SSO       | §2.3/§3.1                                                | **Aligned**             | Redirect for requests; POST for responses.                                                            |
-| **Request signing**                 | [§9.1](#sec-9-1)                   | §3.1.1 Requests            | [IIP‑SP02] (response reject if unsigned)                 | **Aligned / Looser**    | Unsigned requests permitted with ACS pre‑reg; some federations require signing.                       |
-| **Response/Assertion signing**      | [§9.2](#sec-9-2)                   | §3.1.2 Responses           | [IIP‑SP02]                                               | **Stricter**            | Require **both** Response and Assertion signatures.                                                   |
-| **Assertion cardinality (success)** | [§10.9](#sec-10-9)                 | (not fixed)                | (not fixed)                                              | **Stricter**            | Exactly one Assertion/Subject/Authn/AttributeStatement.                                               |
-| **NameID presence**                 | [§6.1](#sec-6)                     | §3.1/4.1                   | §3.1/4.1                                                 | **Aligned / Stricter**  | NameID **MUST** be present; persistent **SHOULD**.                                                    |
-| **Subject identifier attributes**   | [§6.2–§6.4](#sec-6-4)              | §2.1 (varies)              | [IIP‑SP01] liberal parsing; SubjectID profile referenced | **Stricter**            | Require `subject-id` or `pairwise-id` (OASIS CS01).                                                   |
-| **Pairwise model**                  | [§6.3](#sec-6-3)                   | (no sector id)             | (no sector id)                                           | **Aligned**             | Per‑SP uniqueness; no OIDC sector_identifier_uri.                                                     |
-| **RP identifier requirements**      | [§6.5](#sec-6-5)                   | §2.2 EntityAttributes      | [IIP‑MD05]–[IIP‑MD06]                                    | **Aligned**             | Declare via `mdattr:EntityAttributes`.                                                                |
-| **RequestedAuthnContext**           | [§10.1](#sec-10-1)                 | §3.1                       | §3.1/4.1                                                 | **Aligned**             | Exact comparison; achieved class returned.                                                            |
-| **Passive / ForceAuthn**            | §10.6 / §10.2                      | §3.1/4.1                   | §3.1/4.1                                                 | **Aligned**             | SAML‑native semantics; OIDC mapping informative only.                                                 |
-| **Freshness**                       | §10.3, §10.8                       | §2.1 clock skew            | §2.1 clock skew                                          | **Stricter (guidance)** | Concrete formula + skew default.                                                                      |
-| **Session expiry**                  | §10.8                              | (deployment)               | (deployment)                                             | **Stricter**            | RP must redirect to IdP at/before `SessionNotOnOrAfter`.                                              |
-| **Correlation**                     | §9.2                               | §3.1.2                     | §3.1/4.1                                                 | **Aligned / Clearer**   | Require `InResponseTo` on Response and SubjectConfirmationData.                                       |
-| **Bearer‑only**                     | §9.2                               | common                     | common                                                   | **Stricter**            | Non‑bearer rejected.                                                                                  |
-| **Attributes**                      | §7                                 | federation vocabularies    | federation vocabularies                                  | **Missing (narrow)**    | Only `mail`, `givenName`, `sn`, `displayName` defined here; federations may require eduPerson/REFEDS. |
-| **FriendlyName**                    | §7                                 | non‑normative              | non‑normative                                            | **Aligned**             | Ignore for logic.                                                                                     |
-| **Errors**                          | §9.4                               | Status model               | Status model                                             | **Aligned / Extra**     | Informative OIDC mapping; SAML semantics authoritative.                                               |
+---
 
-**Gap/Deviation call‑outs**
+## 21. References {#references}
 
-* **Attributes:** Minimal by design; add federation schemas (e.g., eduPerson) as deployment policy.
-* **Unsigned requests:** Allowed with ACS pre‑reg; treat federation “request must be signed” as a policy override.
-* **Dual signing & cardinality:** Stricter than some deployments; verify operator policy.
-* **Algorithm signaling:** If your federation requires algorithm metadata extensions, add them without altering this core profile.
+### 21.1 Normative {#normative-refs}
+
+* SAML 2.0 Core
+* SAML 2.0 Bindings
+* **SAML2Int** (Kantara SAML 2.0 Deployment Profile for Federation Interoperability)
+* **SAML V2.0 Subject Identifier Attributes Profile (CS01)**
+* XML Signature Specifications
+* TLS 1.2+
+
+### 21.2 Informative {#informative-refs}
+
+* OpenID Connect Core 1.0
+* OAuth 2.0 Authentication Method Reference (AMR) Registry
+* Kantara Federation Interoperability Profile
+
+---
+
+## 22. Rationale (Non-Normative) {#rationale}
+
+* **Unsigned requests** reduce SP complexity and reflect OIDC public clients while maintaining Response/Assertion signing end-to-end.
+* **No encryption requirement** lowers operational friction in single-enterprise contexts where transport security and data minimization suffice.
+* **No SLO requirement** minimizes brittleness; session lifetime is bounded via `SessionNotOnOrAfter`.
+* **Exact ACS matching** and **single audience** eliminate common mis-routing and overbroad audience risks.
+* **Subject unification** (NameID == Subject Identifier Attribute) avoids multiple “subject notions.”
+
+---
+
+## 23. Change Log {#changelog}
+
+* **Implementer’s Draft 1 — 2025-10-25**
+
+  * Initial publication of **Constrained Enterprise Profile of the SAML 2.0 Web Browser SSO Profile**
+  * Aligns with SAML2Int; relaxes signed requests, encryption, SLO; tightens metadata and assertion constraints; adds ACR/AMR parity with OIDC; defines LDAP-style attributes.
+
+---
+
+### Appendix A. Quick Checklist (Non-Normative) {#checklist}
+
+* [ ] SP uses **HTTP-Redirect**; IdP uses **HTTP-POST**.
+* [ ] Response **and** Assertion are **signed** (SHA-256+).
+* [ ] **Exact** ACS match; **exact** single audience == SP entityID.
+* [ ] **One** subject notion: `NameID(persistent)` == `subject-id` **or** `pairwise-id`.
+* [ ] `RequestedAuthnContext` (if used): `Comparison="exact"`.
+* [ ] AMR attribute `https://openid.net/ipsi/amr` issued (values from OAuth AMR registry).
+* [ ] `RelayState` ≤ 80 bytes and echoed.
+* [ ] `SessionNotOnOrAfter` enforced at RP.
+* [ ] SHA-1 **not allowed**.
+* [ ] Metadata has `validUntil` + `cacheDuration`; `KeyName` present on keys; unknown-key ⇒ **re-fetch**.
+
+---
