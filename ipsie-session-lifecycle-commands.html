@@ -1364,10 +1364,10 @@ li > p:last-of-type:only-child {
                     <p id="section-toc.1-1.4.2.3.2.1.1"><a href="#section-4.3.1" class="auto internal xref">4.3.1</a>.  <a href="#name-openid-provider-commands-in" class="internal xref">OpenID Provider Commands: <code>invalidate</code> (RECOMMENDED)</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.2">
-                    <p id="section-toc.1-1.4.2.3.2.2.1"><a href="#section-4.3.2" class="auto internal xref">4.3.2</a>.  <a href="#name-composition-requirement-for" class="internal xref">Composition Requirement for Token Revocation</a></p>
+                    <p id="section-toc.1-1.4.2.3.2.2.1"><a href="#section-4.3.2" class="auto internal xref">4.3.2</a>.  <a href="#name-protocol-comparison" class="internal xref">Protocol Comparison</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3.2.3">
-                    <p id="section-toc.1-1.4.2.3.2.3.1"><a href="#section-4.3.3" class="auto internal xref">4.3.3</a>.  <a href="#name-composition-components" class="internal xref">Composition Components</a></p>
+                    <p id="section-toc.1-1.4.2.3.2.3.1"><a href="#section-4.3.3" class="auto internal xref">4.3.3</a>.  <a href="#name-supplementary-protocols" class="internal xref">Supplementary Protocols</a></p>
 </li>
                 </ul>
 </li>
@@ -1739,7 +1739,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
 </pre><a href="#section-1.5-5" class="pilcrow">¶</a>
 </div>
 <p id="section-1.5-6">All authentication artifacts for the subject are invalidated or revoked. Access tokens held by first-party clients will be invalid on next use. Refresh token rotation will fail. API key-based integrations will stop functioning. The user and all automated integrations must reauthenticate at the IdP and obtain new credentials.<a href="#section-1.5-6" class="pilcrow">¶</a></p>
-<p id="section-1.5-7"><strong>Note on composition:</strong> In this deployment, the SaaS Application is both the RP and the AS. The RP can invalidate sessions, tokens, and API keys in a single internal operation — no separate AS-side revocation protocol is needed. The protocol composition requirement in Section 4.3.2 applies when the RP and AS are separate entities (e.g., the enterprise IdP also serves as the AS for third-party applications).<a href="#section-1.5-7" class="pilcrow">¶</a></p>
+<p id="section-1.5-7"><strong>Note on deployment:</strong> In this deployment, the SaaS Application is both the RP and the AS. When the RP receives an OP Commands <code>invalidate</code> command, it invalidates sessions, tokens, and API keys in a single internal operation. When the RP and AS are separate entities, the RP is still responsible for invalidating all authentication artifacts within its domain upon receiving the command.<a href="#section-1.5-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2523,7 +2523,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
 <a href="#section-4.3.1" class="section-number selfRef">4.3.1. </a><a href="#name-openid-provider-commands-in" class="section-name selfRef">OpenID Provider Commands: <code>invalidate</code> (RECOMMENDED)</a>
           </h4>
 <p id="section-4.3.1-1"><strong>Specification:</strong> <span>[<a href="#OP-Commands" class="cite xref">OP-Commands</a>]</span><a href="#section-4.3.1-1" class="pilcrow">¶</a></p>
-<p id="section-4.3.1-2">The existing OP Command type <strong><code>invalidate</code></strong> maps to the Invalidate Authentication State lifecycle command. When the IdP sends <code>invalidate</code>, it signals that all prior authentication artifacts for the subject must be treated as untrusted.<a href="#section-4.3.1-2" class="pilcrow">¶</a></p>
+<p id="section-4.3.1-2">The OP Command type <strong><code>invalidate</code></strong> maps to the Invalidate Authentication State lifecycle command. The <code>invalidate</code> command is a <strong>strict superset</strong> of the <code>expire</code> command — it includes all session expiry steps defined in Section 4.2.4 plus token invalidation and API key revocation. When the IdP sends <code>invalidate</code>, it signals that all prior authentication artifacts for the subject must be treated as untrusted.<a href="#section-4.3.1-2" class="pilcrow">¶</a></p>
 <table class="center" id="table-14">
             <caption><a href="#table-14" class="selfRef">Table 14</a></caption>
 <thead>
@@ -2562,7 +2562,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
                   <strong>Completes command?</strong>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>Session layer: Yes. Token layer: requires composition</strong> (see below)</td>
+                  <strong>Yes</strong> — fully satisfies Invalidate Authentication State</td>
               </tr>
             </tbody>
           </table>
@@ -2581,46 +2581,42 @@ IdP --invalidate--&gt; SaaS Application (RP)
               <p id="section-4.3.1-5.4.1">Confirm <code>command</code> value is <code>invalidate</code><a href="#section-4.3.1-5.4.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.3.1-5.5">
-              <p id="section-4.3.1-5.5.1">Look up all sessions and tokens by <code>sub</code> (and <code>tenant</code> if applicable)<a href="#section-4.3.1-5.5.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-5.5.1">Perform all <code>expire</code> command steps (Section 4.2.4, steps 5–7): look up and expire all RP client sessions for the subject<a href="#section-4.3.1-5.5.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.3.1-5.6">
-              <p id="section-4.3.1-5.6.1">Invalidate matching RP client sessions<a href="#section-4.3.1-5.6.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-5.6.1">Invalidate all existing access tokens for the subject<a href="#section-4.3.1-5.6.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.3.1-5.7">
-              <p id="section-4.3.1-5.7.1">Invalidate all existing access tokens for the subject<a href="#section-4.3.1-5.7.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-5.7.1">Invalidate all existing refresh tokens for the subject<a href="#section-4.3.1-5.7.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.3.1-5.8">
-              <p id="section-4.3.1-5.8.1">Invalidate all existing refresh tokens for the subject<a href="#section-4.3.1-5.8.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-5.8.1">Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)<a href="#section-4.3.1-5.8.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.3.1-5.9">
-              <p id="section-4.3.1-5.9.1">Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)<a href="#section-4.3.1-5.9.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-5.9.1">Return success response<a href="#section-4.3.1-5.9.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.3.1-5.10">
-              <p id="section-4.3.1-5.10.1">Return success response<a href="#section-4.3.1-5.10.1" class="pilcrow">¶</a></p>
-</li>
-            <li id="section-4.3.1-5.11">
-              <p id="section-4.3.1-5.11.1">On next user interaction, redirect to IdP with <code>prompt=login</code><a href="#section-4.3.1-5.11.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-5.10.1">On next user interaction, redirect to IdP with <code>prompt=login</code><a href="#section-4.3.1-5.10.1" class="pilcrow">¶</a></p>
 </li>
           </ol>
-<p id="section-4.3.1-6"><strong>Note:</strong> The <code>invalidate</code> command instructs the RP to invalidate sessions and tokens, <strong>and</strong> revoke API keys at the RP. However, token revocation at the Authorization Server (and RS-side enforcement for self-contained JWTs) still requires composition with OAuth protocols. API key revocation is handled entirely by the RP since API keys are RP-issued credentials. See Section 4.3.3.<a href="#section-4.3.1-6" class="pilcrow">¶</a></p>
+<p id="section-4.3.1-6"><strong>Note:</strong> Because <code>invalidate</code> is a superset of <code>expire</code>, any RP that implements <code>invalidate</code> inherently satisfies the Expire Session State command as well. The RP is responsible for invalidating all authentication artifacts within its domain, including any tokens issued by its own Authorization Server. See Section 7 for self-contained JWT access token considerations.<a href="#section-4.3.1-6" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="revoke-why-composition">
+<div id="revoke-protocol-comparison">
 <section id="section-4.3.2">
-          <h4 id="name-composition-requirement-for">
-<a href="#section-4.3.2" class="section-number selfRef">4.3.2. </a><a href="#name-composition-requirement-for" class="section-name selfRef">Composition Requirement for Token Revocation</a>
+          <h4 id="name-protocol-comparison">
+<a href="#section-4.3.2" class="section-number selfRef">4.3.2. </a><a href="#name-protocol-comparison" class="section-name selfRef">Protocol Comparison</a>
           </h4>
-<p id="section-4.3.2-1">While <code>invalidate</code> handles the RP-side enforcement (session invalidation + token invalidation), <strong>AS-side token revocation</strong> requires additional protocols. Without AS-side revocation, tokens may still be accepted by other Resource Servers that do not receive the <code>invalidate</code> command.<a href="#section-4.3.2-1" class="pilcrow">¶</a></p>
+<p id="section-4.3.2-1">The following table compares the scope of each protocol when used for the Invalidate Authentication State command.<a href="#section-4.3.2-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-15">
             <caption><a href="#table-15" class="selfRef">Table 15</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Protocol</th>
                 <th class="text-left" rowspan="1" colspan="1">Invalidates RP session?</th>
-                <th class="text-left" rowspan="1" colspan="1">RP invalidates tokens?</th>
+                <th class="text-left" rowspan="1" colspan="1">Invalidates tokens?</th>
                 <th class="text-left" rowspan="1" colspan="1">Revokes API keys?</th>
-                <th class="text-left" rowspan="1" colspan="1">AS revokes tokens?</th>
-                <th class="text-left" rowspan="1" colspan="1">Completes full command alone?</th>
+                <th class="text-left" rowspan="1" colspan="1">Completes command alone?</th>
               </tr>
             </thead>
             <tbody>
@@ -2629,53 +2625,45 @@ IdP --invalidate--&gt; SaaS Application (RP)
                 <td class="text-left" rowspan="1" colspan="1">Yes</td>
                 <td class="text-left" rowspan="1" colspan="1">Yes</td>
                 <td class="text-left" rowspan="1" colspan="1">Yes</td>
-                <td class="text-left" rowspan="1" colspan="1">No</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>No</strong> — needs AS-side revocation</td>
+                  <strong>Yes</strong>
+</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">OIDC Back-Channel Logout</td>
                 <td class="text-left" rowspan="1" colspan="1">Yes</td>
                 <td class="text-left" rowspan="1" colspan="1">No</td>
                 <td class="text-left" rowspan="1" colspan="1">No</td>
-                <td class="text-left" rowspan="1" colspan="1">No</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>No</strong>
-</td>
+                  <strong>No</strong> — session layer only</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">SAML 2.0 Single Logout</td>
                 <td class="text-left" rowspan="1" colspan="1">Yes</td>
                 <td class="text-left" rowspan="1" colspan="1">No</td>
                 <td class="text-left" rowspan="1" colspan="1">No</td>
-                <td class="text-left" rowspan="1" colspan="1">No</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>No</strong>
-</td>
+                  <strong>No</strong> — session layer only</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">OAuth Token Revocation (RFC 7009)</td>
                 <td class="text-left" rowspan="1" colspan="1">No</td>
-                <td class="text-left" rowspan="1" colspan="1">No</td>
-                <td class="text-left" rowspan="1" colspan="1">No</td>
                 <td class="text-left" rowspan="1" colspan="1">Yes (per-token)</td>
+                <td class="text-left" rowspan="1" colspan="1">No</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>No</strong>
-</td>
+                  <strong>No</strong> — token layer only</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">OAuth Global Token Revocation</td>
                 <td class="text-left" rowspan="1" colspan="1">No</td>
-                <td class="text-left" rowspan="1" colspan="1">No</td>
-                <td class="text-left" rowspan="1" colspan="1">No</td>
                 <td class="text-left" rowspan="1" colspan="1">Yes (all tokens)</td>
+                <td class="text-left" rowspan="1" colspan="1">No</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>No</strong>
-</td>
+                  <strong>No</strong> — token layer only</td>
               </tr>
             </tbody>
           </table>
-<p id="section-4.3.2-3">To fully complete Invalidate Authentication State across the ecosystem, implementations MUST compose protocols:<a href="#section-4.3.2-3" class="pilcrow">¶</a></p>
+<p id="section-4.3.2-3">When not using OP Commands (<code>invalidate</code>), implementations MUST compose protocols to achieve full coverage:<a href="#section-4.3.2-3" class="pilcrow">¶</a></p>
 <table class="center" id="table-16">
             <caption><a href="#table-16" class="selfRef">Table 16</a></caption>
 <thead>
@@ -2688,9 +2676,9 @@ IdP --invalidate--&gt; SaaS Application (RP)
             <tbody>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>RP session + RP token invalidation + API key revocation</strong>
+                  <strong>RP session + token invalidation + API key revocation</strong>
 </td>
-                <td class="text-left" rowspan="1" colspan="1">OP Commands (<code>invalidate</code>) — or — OIDC Back-Channel Logout / SAML SLO (session only; RP must additionally invalidate tokens and revoke API keys)</td>
+                <td class="text-left" rowspan="1" colspan="1">OIDC Back-Channel Logout / SAML SLO (session only; RP must additionally invalidate tokens and revoke API keys)</td>
                 <td class="text-left" rowspan="1" colspan="1">
                   <strong>REQUIRED</strong>
 </td>
@@ -2715,15 +2703,14 @@ IdP --invalidate--&gt; SaaS Application (RP)
               </tr>
             </tbody>
           </table>
-<p id="section-4.3.2-5"><strong>Note:</strong> When the RP operates its own first-party Authorization Server (see Section 1.4), the RP handles both RP-side and AS-side token revocation internally. In this case, no separate AS-side revocation protocol is needed — the RP fulfills the AS-side requirement as part of its own command processing.<a href="#section-4.3.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="revoke-components">
 <section id="section-4.3.3">
-          <h4 id="name-composition-components">
-<a href="#section-4.3.3" class="section-number selfRef">4.3.3. </a><a href="#name-composition-components" class="section-name selfRef">Composition Components</a>
+          <h4 id="name-supplementary-protocols">
+<a href="#section-4.3.3" class="section-number selfRef">4.3.3. </a><a href="#name-supplementary-protocols" class="section-name selfRef">Supplementary Protocols</a>
           </h4>
-<p id="section-4.3.3-1">The following protocols participate as <strong>components</strong> in the Invalidate Authentication State composition for AS-side and RS-side enforcement.<a href="#section-4.3.3-1" class="pilcrow">¶</a></p>
+<p id="section-4.3.3-1">The following protocols may be used as <strong>supplementary components</strong> when OP Commands (<code>invalidate</code>) is not available, or for additional ecosystem-wide enforcement.<a href="#section-4.3.3-1" class="pilcrow">¶</a></p>
 <p id="section-4.3.3-2"><strong>OAuth 2.0 Token Revocation — RFC 7009 (token layer)</strong><a href="#section-4.3.3-2" class="pilcrow">¶</a></p>
 <table class="center" id="table-17">
             <caption><a href="#table-17" class="selfRef">Table 17</a></caption>
@@ -2860,7 +2847,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
 </td>
               <td class="text-left" rowspan="1" colspan="1">Not applicable</td>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>RECOMMENDED</strong> — completes RP-side (sessions + tokens + API keys); compose with AS-side revocation</td>
+                <strong>RECOMMENDED</strong> — completes command (sessions + tokens + API keys)</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2868,35 +2855,35 @@ IdP --invalidate--&gt; SaaS Application (RP)
 </td>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>RECOMMENDED</strong> — completes command</td>
-              <td class="text-left" rowspan="1" colspan="1">Component only — session layer</td>
+              <td class="text-left" rowspan="1" colspan="1">Session layer only — must compose with token revocation and API key revocation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>OIDC Front-Channel Logout</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">ACCEPTABLE — completes conditionally</td>
-              <td class="text-left" rowspan="1" colspan="1">Component only — session layer</td>
+              <td class="text-left" rowspan="1" colspan="1">Session layer only — must compose with token revocation and API key revocation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>SAML 2.0 Single Logout</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">ACCEPTABLE — completes command</td>
-              <td class="text-left" rowspan="1" colspan="1">Component only — session layer</td>
+              <td class="text-left" rowspan="1" colspan="1">Session layer only — must compose with token revocation and API key revocation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>OAuth Token Revocation (RFC 7009)</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Not applicable</td>
-              <td class="text-left" rowspan="1" colspan="1">Component only — AS-side token revocation</td>
+              <td class="text-left" rowspan="1" colspan="1">Token layer only — must compose with session invalidation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>OAuth Global Token Revocation</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Not applicable</td>
-              <td class="text-left" rowspan="1" colspan="1">Component only — AS-side token revocation</td>
+              <td class="text-left" rowspan="1" colspan="1">Token layer only — must compose with session invalidation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2935,58 +2922,12 @@ IdP --invalidate--&gt; SaaS Application (RP)
         <h3 id="name-invalidate-authentication-sta">
 <a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-invalidate-authentication-sta" class="section-name selfRef">Invalidate Authentication State (SL2 REQUIRED)</a>
         </h3>
-<p id="section-5.2-1">Composition is <strong>REQUIRED</strong> to achieve full ecosystem coverage (RP-side + AS-side).<a href="#section-5.2-1" class="pilcrow">¶</a></p>
-<p id="section-5.2-2"><strong>Strong Coverage (RECOMMENDED):</strong><a href="#section-5.2-2" class="pilcrow">¶</a></p>
+<p id="section-5.2-1"><strong>Primary (RECOMMENDED):</strong>
+- OP Commands (<code>invalidate</code>) — completes the command in a single protocol exchange<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2"><strong>Legacy Coverage (ACCEPTABLE):</strong><a href="#section-5.2-2" class="pilcrow">¶</a></p>
+<p id="section-5.2-3">When OP Commands is not available, implementations MUST compose protocols to achieve full coverage:<a href="#section-5.2-3" class="pilcrow">¶</a></p>
 <table class="center" id="table-21">
           <caption><a href="#table-21" class="selfRef">Table 21</a></caption>
-<thead>
-            <tr>
-              <th class="text-left" rowspan="1" colspan="1">Layer</th>
-              <th class="text-left" rowspan="1" colspan="1">Protocol</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">RP session + tokens + API keys</td>
-              <td class="text-left" rowspan="1" colspan="1">OP Commands (<code>invalidate</code>)</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP session</td>
-              <td class="text-left" rowspan="1" colspan="1">IdP-side logout (automatic)</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">AS-side token revocation</td>
-              <td class="text-left" rowspan="1" colspan="1">OAuth Global Token Revocation</td>
-            </tr>
-          </tbody>
-        </table>
-<p id="section-5.2-4"><strong>Standard Coverage (ACCEPTABLE):</strong><a href="#section-5.2-4" class="pilcrow">¶</a></p>
-<table class="center" id="table-22">
-          <caption><a href="#table-22" class="selfRef">Table 22</a></caption>
-<thead>
-            <tr>
-              <th class="text-left" rowspan="1" colspan="1">Layer</th>
-              <th class="text-left" rowspan="1" colspan="1">Protocol</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">RP session + tokens + API keys</td>
-              <td class="text-left" rowspan="1" colspan="1">OP Commands (<code>invalidate</code>)</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP session</td>
-              <td class="text-left" rowspan="1" colspan="1">IdP-side logout (automatic)</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">AS-side token revocation</td>
-              <td class="text-left" rowspan="1" colspan="1">OAuth Token Revocation (RFC 7009)</td>
-            </tr>
-          </tbody>
-        </table>
-<p id="section-5.2-6"><strong>Legacy Coverage (ACCEPTABLE):</strong><a href="#section-5.2-6" class="pilcrow">¶</a></p>
-<table class="center" id="table-23">
-          <caption><a href="#table-23" class="selfRef">Table 23</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Layer</th>
@@ -3004,7 +2945,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">AS-side token revocation</td>
-              <td class="text-left" rowspan="1" colspan="1">OAuth Token Revocation (RFC 7009)</td>
+              <td class="text-left" rowspan="1" colspan="1">OAuth Token Revocation (RFC 7009) or OAuth Global Token Revocation</td>
             </tr>
           </tbody>
         </table>
@@ -3025,8 +2966,8 @@ IdP --invalidate--&gt; SaaS Application (RP)
         </h3>
 <p id="section-6.1-1"><strong>Problem:</strong> The OP Commands specification defines <code>invalidate</code> but does not define a session-only expiry command. The <code>invalidate</code> command implies full authentication revocation, which is too broad for the Expire Session State use case.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
 <p id="section-6.1-2"><strong>Proposed Registration:</strong> Register <code>expire</code> as a new OP Command type.<a href="#section-6.1-2" class="pilcrow">¶</a></p>
-<table class="center" id="table-24">
-          <caption><a href="#table-24" class="selfRef">Table 24</a></caption>
+<table class="center" id="table-22">
+          <caption><a href="#table-22" class="selfRef">Table 22</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Field</th>
@@ -3061,8 +3002,9 @@ IdP --invalidate--&gt; SaaS Application (RP)
           </tbody>
         </table>
 <p id="section-6.1-4"><strong>Relationship to <code>invalidate</code>:</strong><a href="#section-6.1-4" class="pilcrow">¶</a></p>
-<table class="center" id="table-25">
-          <caption><a href="#table-25" class="selfRef">Table 25</a></caption>
+<p id="section-6.1-5">The <code>invalidate</code> command is a <strong>strict superset</strong> of <code>expire</code> — it performs all <code>expire</code> steps plus token invalidation and API key revocation.<a href="#section-6.1-5" class="pilcrow">¶</a></p>
+<table class="center" id="table-23">
+          <caption><a href="#table-23" class="selfRef">Table 23</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">OP Command</th>
@@ -3087,13 +3029,13 @@ IdP --invalidate--&gt; SaaS Application (RP)
                 <code>invalidate</code>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Invalidate Authentication State</td>
-              <td class="text-left" rowspan="1" colspan="1">Invalidate</td>
+              <td class="text-left" rowspan="1" colspan="1">Invalidate (superset of expire)</td>
               <td class="text-left" rowspan="1" colspan="1">Invalidate all</td>
               <td class="text-left" rowspan="1" colspan="1">Revoke all</td>
             </tr>
           </tbody>
         </table>
-<p id="section-6.1-6">The RP <strong>MUST</strong> treat <code>expire</code> and <code>invalidate</code> as distinct commands with different scopes. Receiving <code>expire</code> <strong>MUST NOT</strong> trigger token invalidation; receiving <code>invalidate</code> <strong>MUST</strong> trigger both session invalidation and token invalidation.<a href="#section-6.1-6" class="pilcrow">¶</a></p>
+<p id="section-6.1-7">The RP <strong>MUST</strong> treat <code>expire</code> and <code>invalidate</code> as distinct commands with different scopes. Receiving <code>expire</code> <strong>MUST NOT</strong> trigger token invalidation; receiving <code>invalidate</code> <strong>MUST</strong> perform all <code>expire</code> steps and additionally invalidate tokens and revoke API keys.<a href="#section-6.1-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="ext-caep-enforcement">
@@ -3114,8 +3056,8 @@ IdP --invalidate--&gt; SaaS Application (RP)
             <p id="section-6.2-3.3.1">Requires the receiver to report enforcement status<a href="#section-6.2-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
-<table class="center" id="table-26">
-          <caption><a href="#table-26" class="selfRef">Table 26</a></caption>
+<table class="center" id="table-24">
+          <caption><a href="#table-24" class="selfRef">Table 24</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">CAEP Event</th>
@@ -3164,8 +3106,8 @@ IdP --invalidate--&gt; SaaS Application (RP)
 <a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-on-demand-invalidation" class="section-name selfRef">On-Demand Invalidation</a>
         </h3>
 <p id="section-7.1-1">RPs that can invalidate self-contained access tokens immediately upon receiving an Invalidate Authentication State command — for example, via revocation lists, status lists, or event-driven invalidation (CAEP/SSF) — are not subject to the maximum TTL constraints in Section 7.2.<a href="#section-7.1-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-27">
-          <caption><a href="#table-27" class="selfRef">Table 27</a></caption>
+<table class="center" id="table-25">
+          <caption><a href="#table-25" class="selfRef">Table 25</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Strategy</th>
@@ -3199,8 +3141,8 @@ IdP --invalidate--&gt; SaaS Application (RP)
 <a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-maximum-token-lifetime" class="section-name selfRef">Maximum Token Lifetime</a>
         </h3>
 <p id="section-7.2-1">When the RP <strong>cannot</strong> invalidate self-contained access tokens on demand, the token lifetime is the sole control bounding the exposure window. In this case, self-contained access tokens <strong>MUST</strong> comply with the following maximum lifetime constraints:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-28">
-          <caption><a href="#table-28" class="selfRef">Table 28</a></caption>
+<table class="center" id="table-26">
+          <caption><a href="#table-26" class="selfRef">Table 26</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">IPSIE Level</th>

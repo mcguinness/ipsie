@@ -302,7 +302,7 @@ IdP --invalidate--> SaaS Application (RP)
 
 All authentication artifacts for the subject are invalidated or revoked. Access tokens held by first-party clients will be invalid on next use. Refresh token rotation will fail. API key-based integrations will stop functioning. The user and all automated integrations must reauthenticate at the IdP and obtain new credentials.
 
-**Note on composition:** In this deployment, the SaaS Application is both the RP and the AS. The RP can invalidate sessions, tokens, and API keys in a single internal operation — no separate AS-side revocation protocol is needed. The protocol composition requirement in Section 4.3.2 applies when the RP and AS are separate entities (e.g., the enterprise IdP also serves as the AS for third-party applications).
+**Note on deployment:** In this deployment, the SaaS Application is both the RP and the AS. When the RP receives an OP Commands `invalidate` command, it invalidates sessions, tokens, and API keys in a single internal operation. When the RP and AS are separate entities, the RP is still responsible for invalidating all authentication artifacts within its domain upon receiving the command.
 
 
 # Lifecycle Command Definitions {#commands}
@@ -586,7 +586,7 @@ This specification defines a new OP Command type **`expire`** that maps to the E
 
 **Specification:** {{OP-Commands}}
 
-The existing OP Command type **`invalidate`** maps to the Invalidate Authentication State lifecycle command. When the IdP sends `invalidate`, it signals that all prior authentication artifacts for the subject must be treated as untrusted.
+The OP Command type **`invalidate`** maps to the Invalidate Authentication State lifecycle command. The `invalidate` command is a **strict superset** of the `expire` command — it includes all session expiry steps defined in Section 4.2.4 plus token invalidation and API key revocation. When the IdP sends `invalidate`, it signals that all prior authentication artifacts for the subject must be treated as untrusted.
 
 | Element | Value / Behavior |
 |---------|-----------------|
@@ -595,7 +595,7 @@ The existing OP Command type **`invalidate`** maps to the Invalidate Authenticat
 | Token type | JWT with `typ: command+jwt`, signed with IdP signing keys |
 | Required claims | `iss`, `aud`, `client_id`, `iat`, `exp`, `jti`, `command`, `tenant`, `sub` |
 | RP behavior | Invalidate RP client session, invalidate all existing access and refresh tokens, revoke all API keys for the subject, require reauthentication |
-| **Completes command?** | **Session layer: Yes. Token layer: requires composition** (see below) |
+| **Completes command?** | **Yes** — fully satisfies Invalidate Authentication State |
 
 **RP Implementation:**
 
@@ -603,41 +603,38 @@ The existing OP Command type **`invalidate`** maps to the Invalidate Authenticat
 2. Verify `typ` is `command+jwt`
 3. Verify `iss`, `aud`, `iat`, `exp`, `jti`, and `command` claims
 4. Confirm `command` value is `invalidate`
-5. Look up all sessions and tokens by `sub` (and `tenant` if applicable)
-6. Invalidate matching RP client sessions
-7. Invalidate all existing access tokens for the subject
-8. Invalidate all existing refresh tokens for the subject
-9. Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)
-10. Return success response
-11. On next user interaction, redirect to IdP with `prompt=login`
+5. Perform all `expire` command steps (Section 4.2.4, steps 5–7): look up and expire all RP client sessions for the subject
+6. Invalidate all existing access tokens for the subject
+7. Invalidate all existing refresh tokens for the subject
+8. Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)
+9. Return success response
+10. On next user interaction, redirect to IdP with `prompt=login`
 
-**Note:** The `invalidate` command instructs the RP to invalidate sessions and tokens, **and** revoke API keys at the RP. However, token revocation at the Authorization Server (and RS-side enforcement for self-contained JWTs) still requires composition with OAuth protocols. API key revocation is handled entirely by the RP since API keys are RP-issued credentials. See Section 4.3.3.
+**Note:** Because `invalidate` is a superset of `expire`, any RP that implements `invalidate` inherently satisfies the Expire Session State command as well. The RP is responsible for invalidating all authentication artifacts within its domain, including any tokens issued by its own Authorization Server. See Section 7 for self-contained JWT access token considerations.
 
-### Composition Requirement for Token Revocation {#revoke-why-composition}
+### Protocol Comparison {#revoke-protocol-comparison}
 
-While `invalidate` handles the RP-side enforcement (session invalidation + token invalidation), **AS-side token revocation** requires additional protocols. Without AS-side revocation, tokens may still be accepted by other Resource Servers that do not receive the `invalidate` command.
+The following table compares the scope of each protocol when used for the Invalidate Authentication State command.
 
-| Protocol | Invalidates RP session? | RP invalidates tokens? | Revokes API keys? | AS revokes tokens? | Completes full command alone? |
-|----------|----------------------|-------------------|------------------|-------------------|------------------------------|
-| OP Commands (`invalidate`) | Yes | Yes | Yes | No | **No** — needs AS-side revocation |
-| OIDC Back-Channel Logout | Yes | No | No | No | **No** |
-| SAML 2.0 Single Logout | Yes | No | No | No | **No** |
-| OAuth Token Revocation (RFC 7009) | No | No | No | Yes (per-token) | **No** |
-| OAuth Global Token Revocation | No | No | No | Yes (all tokens) | **No** |
+| Protocol | Invalidates RP session? | Invalidates tokens? | Revokes API keys? | Completes command alone? |
+|----------|----------------------|-------------------|------------------|------------------------------|
+| OP Commands (`invalidate`) | Yes | Yes | Yes | **Yes** |
+| OIDC Back-Channel Logout | Yes | No | No | **No** — session layer only |
+| SAML 2.0 Single Logout | Yes | No | No | **No** — session layer only |
+| OAuth Token Revocation (RFC 7009) | No | Yes (per-token) | No | **No** — token layer only |
+| OAuth Global Token Revocation | No | Yes (all tokens) | No | **No** — token layer only |
 
-To fully complete Invalidate Authentication State across the ecosystem, implementations MUST compose protocols:
+When not using OP Commands (`invalidate`), implementations MUST compose protocols to achieve full coverage:
 
 | Layer | Protocol | Requirement |
 |-------|----------|-------------|
-| **RP session + RP token invalidation + API key revocation** | OP Commands (`invalidate`) — or — OIDC Back-Channel Logout / SAML SLO (session only; RP must additionally invalidate tokens and revoke API keys) | **REQUIRED** |
+| **RP session + token invalidation + API key revocation** | OIDC Back-Channel Logout / SAML SLO (session only; RP must additionally invalidate tokens and revoke API keys) | **REQUIRED** |
 | **IdP SSO session** | IdP-side logout | **REQUIRED** |
 | **AS-side token revocation** | OAuth 2.0 Token Revocation {{RFC7009}} or Global Token Revocation | **REQUIRED** |
 
-**Note:** When the RP operates its own first-party Authorization Server (see Section 1.4), the RP handles both RP-side and AS-side token revocation internally. In this case, no separate AS-side revocation protocol is needed — the RP fulfills the AS-side requirement as part of its own command processing.
+### Supplementary Protocols {#revoke-components}
 
-### Composition Components {#revoke-components}
-
-The following protocols participate as **components** in the Invalidate Authentication State composition for AS-side and RS-side enforcement.
+The following protocols may be used as **supplementary components** when OP Commands (`invalidate`) is not available, or for additional ecosystem-wide enforcement.
 
 **OAuth 2.0 Token Revocation — RFC 7009 (token layer)**
 
@@ -676,12 +673,12 @@ Both commands are **REQUIRED at SL2**. The following table summarizes which comm
 | Protocol | Expire Session State (SL2) | Invalidate Authentication State (SL2) |
 |----------|---------------------|----------------------------|
 | **OP Commands (`expire`)** | **RECOMMENDED** — completes command | Not applicable |
-| **OP Commands (`invalidate`)** | Not applicable | **RECOMMENDED** — completes RP-side (sessions + tokens + API keys); compose with AS-side revocation |
-| **OIDC Back-Channel Logout** | **RECOMMENDED** — completes command | Component only — session layer |
-| **OIDC Front-Channel Logout** | ACCEPTABLE — completes conditionally | Component only — session layer |
-| **SAML 2.0 Single Logout** | ACCEPTABLE — completes command | Component only — session layer |
-| **OAuth Token Revocation (RFC 7009)** | Not applicable | Component only — AS-side token revocation |
-| **OAuth Global Token Revocation** | Not applicable | Component only — AS-side token revocation |
+| **OP Commands (`invalidate`)** | Not applicable | **RECOMMENDED** — completes command (sessions + tokens + API keys) |
+| **OIDC Back-Channel Logout** | **RECOMMENDED** — completes command | Session layer only — must compose with token revocation and API key revocation |
+| **OIDC Front-Channel Logout** | ACCEPTABLE — completes conditionally | Session layer only — must compose with token revocation and API key revocation |
+| **SAML 2.0 Single Logout** | ACCEPTABLE — completes command | Session layer only — must compose with token revocation and API key revocation |
+| **OAuth Token Revocation (RFC 7009)** | Not applicable | Token layer only — must compose with session invalidation |
+| **OAuth Global Token Revocation** | Not applicable | Token layer only — must compose with session invalidation |
 | **Shared Signals (CAEP)** | Not applicable | Supplementary notification only |
 
 
@@ -702,31 +699,18 @@ A single protocol can fully complete this command.
 
 ## Invalidate Authentication State (SL2 REQUIRED) {#rec-revoke}
 
-Composition is **REQUIRED** to achieve full ecosystem coverage (RP-side + AS-side).
-
-**Strong Coverage (RECOMMENDED):**
-
-| Layer | Protocol |
-|-------|----------|
-| RP session + tokens + API keys | OP Commands (`invalidate`) |
-| IdP session | IdP-side logout (automatic) |
-| AS-side token revocation | OAuth Global Token Revocation |
-
-**Standard Coverage (ACCEPTABLE):**
-
-| Layer | Protocol |
-|-------|----------|
-| RP session + tokens + API keys | OP Commands (`invalidate`) |
-| IdP session | IdP-side logout (automatic) |
-| AS-side token revocation | OAuth Token Revocation (RFC 7009) |
+**Primary (RECOMMENDED):**
+- OP Commands (`invalidate`) — completes the command in a single protocol exchange
 
 **Legacy Coverage (ACCEPTABLE):**
+
+When OP Commands is not available, implementations MUST compose protocols to achieve full coverage:
 
 | Layer | Protocol |
 |-------|----------|
 | RP session | OIDC Back-Channel Logout (RP must additionally invalidate tokens and revoke API keys) |
 | IdP session | IdP-side logout (automatic) |
-| AS-side token revocation | OAuth Token Revocation (RFC 7009) |
+| AS-side token revocation | OAuth Token Revocation (RFC 7009) or OAuth Global Token Revocation |
 
 
 # Suggested Protocol Extensions {#extensions}
@@ -749,12 +733,14 @@ The following extensions would improve the ability to implement these commands w
 
 **Relationship to `invalidate`:**
 
+The `invalidate` command is a **strict superset** of `expire` — it performs all `expire` steps plus token invalidation and API key revocation.
+
 | OP Command | Lifecycle Command | Session | Tokens | API Keys |
 |------------|-------------------|---------|--------|----------|
 | `expire` | Expire Session State | Expire | Unchanged | Unchanged |
-| `invalidate` | Invalidate Authentication State | Invalidate | Invalidate all | Revoke all |
+| `invalidate` | Invalidate Authentication State | Invalidate (superset of expire) | Invalidate all | Revoke all |
 
-The RP **MUST** treat `expire` and `invalidate` as distinct commands with different scopes. Receiving `expire` **MUST NOT** trigger token invalidation; receiving `invalidate` **MUST** trigger both session invalidation and token invalidation.
+The RP **MUST** treat `expire` and `invalidate` as distinct commands with different scopes. Receiving `expire` **MUST NOT** trigger token invalidation; receiving `invalidate` **MUST** perform all `expire` steps and additionally invalidate tokens and revoke API keys.
 
 ## CAEP: Enforcement Profile for Session Lifecycle {#ext-caep-enforcement}
 
