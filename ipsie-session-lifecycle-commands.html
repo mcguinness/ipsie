@@ -1227,7 +1227,7 @@ li > p:last-of-type:only-child {
 <dl id="identifiers">
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-02-17" class="published">17 February 2026</time>
+<time datetime="2026-02-18" class="published">18 February 2026</time>
     </dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
@@ -1666,7 +1666,7 @@ The server hosting protected resources, capable of accepting and responding to r
 <p id="section-1.3-17"><strong>Invalidate</strong>
 To render an artifact (token, session, API key, or authentication state) no longer valid or trustworthy, regardless of its remaining lifetime. Invalidation is an active security operation, typically in response to a security event. In this specification, "Invalidate Authentication State" denotes the Identity Service-initiated command to invalidate all prior authentication artifacts for a subject. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-1.3-17" class="pilcrow">¶</a></p>
 <p id="section-1.3-18"><strong>Logout</strong>
-An explicit action that terminates a subject's authenticated session at the RP, transitions the session to the <strong>Terminated</strong> state, and requires <strong>Forced Reauthentication</strong> before the subject can regain interactive access. Logout is distinct from time-based session expiry (which may allow Session Continuation) and from the Reestablish Session command (which marks the session Invalid without terminating it). Common forms include:<a href="#section-1.3-18" class="pilcrow">¶</a></p>
+An explicit action that terminates a subject's authenticated session at the RP, transitions the session to the <strong>Terminated</strong> state, and requires <strong>Forced Reauthentication</strong> before the subject can regain interactive access. Logout is distinct from time-based session expiry (which may allow Session Continuation) and from the Reestablish Session command (which expires the session without terminating it). Common forms include:<a href="#section-1.3-18" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-1.3-19.1">
             <p id="section-1.3-19.1.1"><strong>User-Initiated Logout:</strong> The subject explicitly requests to end their session (e.g., by clicking "Sign Out"). The RP session is terminated. OAuth access tokens, refresh tokens, and API keys are typically preserved, as the subject may have active background processes. The IdP SSO session MAY be terminated depending on whether the logout is propagated to the Identity Service via OIDC Logout or SAML SLO.<a href="#section-1.3-19.1.1" class="pilcrow">¶</a></p>
@@ -1723,15 +1723,15 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
          |          +-------------------+                        |
          |          |      Active       |                        |
          |          +-------------------+                        |
-         |            |       |       |                          |
-         |            v       v       v                          |
-         |  +---------+ +---------+ +------------+             |
-         |  | Expired | | Invalid | | Terminated |             |
-         |  +---------+ +---------+ +------------+             |
-         |       |             |               |                  |
-         +-------+-------------+               +------------------+
-       (subject returns                   (subject returns
-        to Established)                      to Unauthenticated)
+         |               |            |                           |
+         |               v            v                           |
+         |        +---------+  +------------+                     |
+         |        | Expired |  | Terminated |                     |
+         |        +---------+  +------------+                     |
+         |             |              |                           |
+         +-------------+              +---------------------------+
+       (subject returns            (subject returns
+        to Established)             to Unauthenticated)
 </pre><a href="#section-2.1-1" class="pilcrow">¶</a>
 </div>
 <p id="section-2.1-2">The lifecycle defines four progressive levels of Identity Service control over RP sessions:<a href="#section-2.1-2" class="pilcrow">¶</a></p>
@@ -1760,24 +1760,24 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>2. Logout</strong>
+                <strong>2. Reestablish</strong>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>Expired</strong>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">Reestablish Session command</td>
+              <td class="text-left" rowspan="1" colspan="1">"Come back now and prove it with full authentication"</td>
+              <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>3. Logout</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Terminated</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Logout (user, admin, policy, or system-initiated)</td>
               <td class="text-left" rowspan="1" colspan="1">Session ended; re-authentication required</td>
-              <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>3. Suspend</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>Invalid</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Reestablish Session command</td>
-              <td class="text-left" rowspan="1" colspan="1">"Get a fresh session; full re-evaluation required"</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
             </tr>
             <tr>
@@ -1816,10 +1816,16 @@ The subject's RP client sessions are no longer valid due to time-based expiry. E
             <p id="section-2.2-5.2.1"><strong>Absolute timeout:</strong> Maximum session duration reached regardless of activity <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-2.2-5.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-2.2-6">Tokens and API keys remain valid. The session authority is retained, so the RP redirects the subject to the same Identity Service that established the session without requiring IdP discovery. The subject returns to the Established state, where the IdP may satisfy the request via <strong>Session Continuation</strong> (reusing the existing IdP session) or <strong>Step-Up Authentication</strong> if the IdP's policy requires it. <strong>Forced Reauthentication</strong> may also be used but is not required. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.3.7<a href="#section-2.2-6" class="pilcrow">¶</a></p>
-<p id="section-2.2-7"><strong>Invalid:</strong>
-The subject's RP client sessions are no longer accepted. Tokens and API keys remain valid. The session authority is retained, so the RP redirects the subject to the same Identity Service that established the session without requiring IdP discovery. The subject MUST return to the Established state via <strong>Forced Reauthentication</strong>. Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 3.3 for Forced Reauthentication requirements.<a href="#section-2.2-7" class="pilcrow">¶</a></p>
-<p id="section-2.2-8">A session may be marked Invalid by the <strong>Reestablish Session</strong> command from the Identity Service, or by RP-specific mechanisms such as account lockout, account recovery, administrative action, or risk-based policy enforcement. This specification defines the Identity Service-initiated trigger; RP-specific triggers are outside the scope of this specification but produce the same logical state.<a href="#section-2.2-8" class="pilcrow">¶</a></p>
+<p id="section-2.2-6">Tokens and API keys remain valid. The session authority is retained, so the RP redirects the subject to the same Identity Service that established the session without requiring IdP discovery. The subject returns to the Established state. The authentication intent depends on how the session expired:<a href="#section-2.2-6" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-2.2-7.1">
+            <p id="section-2.2-7.1.1"><strong>Time-based expiry:</strong> The IdP may satisfy the request via <strong>Session Continuation</strong>, <strong>Step-Up Authentication</strong>, or <strong>Forced Reauthentication</strong> depending on its policy. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access.<a href="#section-2.2-7.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-2.2-7.2">
+            <p id="section-2.2-7.2.1"><strong>Reestablish Session command:</strong> The Identity Service explicitly requires <strong>Forced Reauthentication</strong>. Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 3.3 for Forced Reauthentication requirements.<a href="#section-2.2-7.2.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-2.2-8"><span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.3.7<a href="#section-2.2-8" class="pilcrow">¶</a></p>
 <p id="section-2.2-9"><strong>Terminated:</strong>
 The subject's RP client session is terminated and the subject must re-authenticate through the Identity Service before regaining interactive access. This state is reached via two distinct triggers with different artifact scopes:<a href="#section-2.2-9" class="pilcrow">¶</a></p>
 <ul class="normal">
@@ -1871,14 +1877,14 @@ The subject's RP client session is terminated and the subject must re-authentica
               <td class="text-left" rowspan="1" colspan="1">Active</td>
               <td class="text-left" rowspan="1" colspan="1">Expired</td>
               <td class="text-left" rowspan="1" colspan="1">Inactivity timeout or absolute timeout</td>
-              <td class="text-left" rowspan="1" colspan="1">Time-based triggers (SL1)</td>
+              <td class="text-left" rowspan="1" colspan="1">Time-based; Session Continuation, Step-Up, or Forced Reauthentication permitted (SL1)</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Active</td>
-              <td class="text-left" rowspan="1" colspan="1">Invalid</td>
+              <td class="text-left" rowspan="1" colspan="1">Expired</td>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Reestablish Session</strong> command</td>
-              <td class="text-left" rowspan="1" colspan="1">Identity Service-initiated access revalidation (SL2)</td>
+              <td class="text-left" rowspan="1" colspan="1">Identity Service-initiated; Forced Reauthentication required (SL2)</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Active</td>
@@ -1897,21 +1903,15 @@ The subject's RP client session is terminated and the subject must re-authentica
               <td class="text-left" rowspan="1" colspan="1">Expired</td>
               <td class="text-left" rowspan="1" colspan="1">Established</td>
               <td class="text-left" rowspan="1" colspan="1">Subject requests access</td>
-              <td class="text-left" rowspan="1" colspan="1">Session Continuation, Step-Up, or Forced Reauthentication</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Invalid</td>
-              <td class="text-left" rowspan="1" colspan="1">Established</td>
-              <td class="text-left" rowspan="1" colspan="1">Subject requests access</td>
-              <td class="text-left" rowspan="1" colspan="1">Forced Reauthentication ONLY</td>
+              <td class="text-left" rowspan="1" colspan="1">Authentication intent depends on trigger (see Section 2)</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Terminated</td>
               <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
               <td class="text-left" rowspan="1" colspan="1">
-                <em>(immediate — all artifacts invalidated)</em>
+                <em>(immediate)</em>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Subject must start fresh via Unauthenticated</td>
+              <td class="text-left" rowspan="1" colspan="1">Session authority cleared; subject may select a different IdP</td>
             </tr>
           </tbody>
         </table>
@@ -1929,8 +1929,8 @@ The subject's RP client session is terminated and the subject must re-authentica
             <tr>
               <th class="text-left" rowspan="1" colspan="1"> </th>
               <th class="text-left" rowspan="1" colspan="1">Check-back</th>
-              <th class="text-left" rowspan="1" colspan="1">Logout</th>
               <th class="text-left" rowspan="1" colspan="1">Reestablish</th>
+              <th class="text-left" rowspan="1" colspan="1">Logout</th>
               <th class="text-left" rowspan="1" colspan="1">Invalidate</th>
             </tr>
           </thead>
@@ -1940,8 +1940,8 @@ The subject's RP client session is terminated and the subject must re-authentica
                 <strong>Identity Service intent</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Periodic re-evaluation</td>
+              <td class="text-left" rowspan="1" colspan="1">Forced re-evaluation now</td>
               <td class="text-left" rowspan="1" colspan="1">Session ended</td>
-              <td class="text-left" rowspan="1" colspan="1">Full access revalidation</td>
               <td class="text-left" rowspan="1" colspan="1">Security response</td>
             </tr>
             <tr>
@@ -1949,8 +1949,8 @@ The subject's RP client session is terminated and the subject must re-authentica
                 <strong>Trigger</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Time-based expiry</td>
-              <td class="text-left" rowspan="1" colspan="1">User, admin, policy, or system</td>
               <td class="text-left" rowspan="1" colspan="1">Reestablish Session command</td>
+              <td class="text-left" rowspan="1" colspan="1">User, admin, policy, or system</td>
               <td class="text-left" rowspan="1" colspan="1">Invalidate Authentication State command</td>
             </tr>
             <tr>
@@ -1958,8 +1958,8 @@ The subject's RP client session is terminated and the subject must re-authentica
                 <strong>Sessions</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Expired</td>
+              <td class="text-left" rowspan="1" colspan="1">Expired</td>
               <td class="text-left" rowspan="1" colspan="1">Terminated</td>
-              <td class="text-left" rowspan="1" colspan="1">Invalid</td>
               <td class="text-left" rowspan="1" colspan="1">Terminated</td>
             </tr>
             <tr>
@@ -1994,8 +1994,8 @@ The subject's RP client session is terminated and the subject must re-authentica
                 <strong>IdP session</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">May still be valid</td>
-              <td class="text-left" rowspan="1" colspan="1">MAY be terminated</td>
               <td class="text-left" rowspan="1" colspan="1">MUST require new authentication ceremony; MAY use existing session context</td>
+              <td class="text-left" rowspan="1" colspan="1">MAY be terminated</td>
               <td class="text-left" rowspan="1" colspan="1">Invalidated</td>
             </tr>
             <tr>
@@ -2003,8 +2003,8 @@ The subject's RP client session is terminated and the subject must re-authentica
                 <strong>Session authority</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Retained; redirects to same IdP</td>
-              <td class="text-left" rowspan="1" colspan="1">Cleared; subject may select a different IdP</td>
               <td class="text-left" rowspan="1" colspan="1">Retained; redirects to same IdP</td>
+              <td class="text-left" rowspan="1" colspan="1">Cleared; subject may select a different IdP</td>
               <td class="text-left" rowspan="1" colspan="1">Cleared; subject may select a different IdP</td>
             </tr>
             <tr>
@@ -2012,8 +2012,8 @@ The subject's RP client session is terminated and the subject must re-authentica
                 <strong>Returns to</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Established</td>
-              <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
               <td class="text-left" rowspan="1" colspan="1">Established</td>
+              <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
               <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
             </tr>
             <tr>
@@ -2021,8 +2021,8 @@ The subject's RP client session is terminated and the subject must re-authentica
                 <strong>IPSIE level</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">SL1+</td>
-              <td class="text-left" rowspan="1" colspan="1">SL1+</td>
               <td class="text-left" rowspan="1" colspan="1">SL2+</td>
+              <td class="text-left" rowspan="1" colspan="1">SL1+</td>
               <td class="text-left" rowspan="1" colspan="1">SL2+</td>
             </tr>
           </tbody>
@@ -2430,21 +2430,13 @@ The subject's RP client session is terminated and the subject must re-authentica
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Expired</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Inactivity timeout</td>
+              <td class="text-left" rowspan="1" colspan="1">Inactivity timeout or absolute timeout</td>
               <td class="text-left" rowspan="1" colspan="1">Session Continuation, Step-Up, or Forced Reauthentication</td>
               <td class="text-left" rowspan="1" colspan="1">IdP session may still be valid; IdP re-evaluates on check-back</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Expired</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Absolute timeout</td>
-              <td class="text-left" rowspan="1" colspan="1">Session Continuation, Step-Up, or Forced Reauthentication</td>
-              <td class="text-left" rowspan="1" colspan="1">IdP session may still be valid; IdP re-evaluates on check-back</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>Invalid</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Reestablish Session command</td>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2488,8 +2480,8 @@ The subject's RP client session is terminated and the subject must re-authentica
         <h3 id="name-reestablish-session">
 <a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-reestablish-session" class="section-name selfRef">Reestablish Session</a>
         </h3>
-<p id="section-4.1-1">An Identity Service command requiring the RP to mark <strong>all</strong> of the subject's RP client sessions as Invalid and reestablish them through a full authentication at the Identity Service. The purpose of this command is <strong>access revalidation</strong>. It gives the Identity Service the opportunity to re-evaluate policy, risk, device posture, account state, and conditional access rules before allowing the subject to continue accessing the RP.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
-<p id="section-4.1-2">This command transitions the session to the <strong>Invalid</strong> state (see Section 2), which requires <strong>Forced Reauthentication</strong>. Session Continuation and Step-Up Authentication are not sufficient. This is distinct from time-based session expiry (the <strong>Expired</strong> state), where the Identity Service may satisfy the request via Session Continuation.<a href="#section-4.1-2" class="pilcrow">¶</a></p>
+<p id="section-4.1-1">An Identity Service command requiring the RP to expire <strong>all</strong> of the subject's RP client sessions and reestablish them through a full authentication at the Identity Service. The purpose of this command is <strong>access revalidation</strong>. It gives the Identity Service the opportunity to re-evaluate policy, risk, device posture, account state, and conditional access rules before allowing the subject to continue accessing the RP.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.1-2">This command transitions the session to the <strong>Expired</strong> state and requires <strong>Forced Reauthentication</strong>. Session Continuation and Step-Up Authentication are not sufficient. This is the only behavioral difference from time-based session expiry: when triggered by the Reestablish Session command, the RP MUST require Forced Reauthentication rather than allowing Session Continuation.<a href="#section-4.1-2" class="pilcrow">¶</a></p>
 <p id="section-4.1-3"><strong>Scope:</strong> All RP client sessions for the subject: browser cookie sessions, native-app session tokens, and any other interactive session state.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
 <div id="reestablish-rp">
 <section id="section-4.1.1">
@@ -2555,7 +2547,7 @@ The subject's RP client session is terminated and the subject must re-authentica
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">RP client session</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>Invalid</strong>
+                  <strong>Expired</strong>
 </td>
               </tr>
               <tr>
@@ -2754,13 +2746,13 @@ The subject's RP client session is terminated and the subject must re-authentica
 <p id="section-4.3.1-3">The RP <strong>SHOULD</strong> include the following claims in the <code>session-revoked</code> event:<a href="#section-4.3.1-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-4.3.1-4.1">
-              <p id="section-4.3.1-4.1.1"><code>sub</code>: The subject whose session was marked Invalid<a href="#section-4.3.1-4.1.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-4.1.1"><code>sub</code>: The subject whose session was expired<a href="#section-4.3.1-4.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.3.1-4.2">
               <p id="section-4.3.1-4.2.1"><code>reason_admin</code>: Indicate that session reestablishment was requested (e.g., <code>"Session reestablishment required by Identity Service"</code>)<a href="#section-4.3.1-4.2.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.3.1-4.3">
-              <p id="section-4.3.1-4.3.1"><code>event_timestamp</code>: The time at which the RP marked the session Invalid<a href="#section-4.3.1-4.3.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-4.3.1"><code>event_timestamp</code>: The time at which the RP expired the session<a href="#section-4.3.1-4.3.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="section-4.3.1-5">The RP <strong>SHOULD NOT</strong> publish <code>credential-change</code> events for Reestablish Session, as tokens and API keys are unaffected.<a href="#section-4.3.1-5" class="pilcrow">¶</a></p>
@@ -2888,14 +2880,14 @@ The subject's RP client session is terminated and the subject must re-authentica
           <h4 id="name-command-ordering">
 <a href="#section-4.4.3" class="section-number selfRef">4.4.3. </a><a href="#name-command-ordering" class="section-name selfRef">Command Ordering</a>
           </h4>
-<p id="section-4.4.3-1">Invalidate Authentication State is a strict superset of Reestablish Session. It includes all session invalidation steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the <strong>Invalid</strong> state while Invalidate Authentication State transitions to the <strong>Terminated</strong> state (see Section 2.4).<a href="#section-4.4.3-1" class="pilcrow">¶</a></p>
+<p id="section-4.4.3-1">Invalidate Authentication State is a strict superset of Reestablish Session. It includes all session invalidation steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the <strong>Expired</strong> state while Invalidate Authentication State transitions to the <strong>Terminated</strong> state (see Section 2.4).<a href="#section-4.4.3-1" class="pilcrow">¶</a></p>
 <p id="section-4.4.3-2">If both commands are received for the same subject:<a href="#section-4.4.3-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-4.4.3-3.1">
               <p id="section-4.4.3-3.1.1"><strong>Reestablish Session after Invalidate Authentication State:</strong> The RP <strong>MUST</strong> succeed. The session is already in the Terminated state. All artifacts are invalidated. No further action is needed.<a href="#section-4.4.3-3.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.4.3-3.2">
-              <p id="section-4.4.3-3.2.1"><strong>Invalidate Authentication State after Reestablish Session:</strong> The RP <strong>MUST</strong> process the full Invalidate Authentication State command. The session transitions from the Invalid state to the Terminated state. Sessions may already be expired, but the RP must additionally invalidate tokens and revoke API keys.<a href="#section-4.4.3-3.2.1" class="pilcrow">¶</a></p>
+              <p id="section-4.4.3-3.2.1"><strong>Invalidate Authentication State after Reestablish Session:</strong> The RP <strong>MUST</strong> process the full Invalidate Authentication State command. The session transitions from the Expired state to the Terminated state. Sessions are already expired, but the RP must additionally invalidate tokens and revoke API keys.<a href="#section-4.4.3-3.2.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="section-4.4.3-4">In general, the RP <strong>SHOULD</strong> apply each command to the current state of the subject's artifacts. A command succeeds if the resulting state defined in Sections 4.1.3 or 4.2.3 is achieved, regardless of what prior state existed.<a href="#section-4.4.3-4" class="pilcrow">¶</a></p>
@@ -2925,7 +2917,7 @@ The subject's RP client session is terminated and the subject must re-authentica
         <h3 id="name-reestablish-session-protoco">
 <a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-reestablish-session-protoco" class="section-name selfRef">Reestablish Session: Protocol Mappings</a>
         </h3>
-<p id="section-5.2-1">The following protocols can <strong>fully complete</strong> the Reestablish Session command because they terminate or mark Invalid the RP client session and require the RP to reestablish it through a full authentication at the Identity Service.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-1">The following protocols can <strong>fully complete</strong> the Reestablish Session command because they expire or terminate the RP client session and require the RP to reestablish it through a full authentication at the Identity Service.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
 <p id="section-5.2-2"><strong>Note on Logout protocols (BCL, FCL, SAML SLO):</strong> These protocols implement the <strong>Logout</strong> trigger, transitioning the session to the <strong>Terminated</strong> state (tokens preserved). Because Terminated requires <strong>Forced Reauthentication</strong> through the Identity Service, Logout gives the Identity Service the same access-revalidation opportunity as the Reestablish Session command. The IdP can re-evaluate policy, risk, device posture, and account state before issuing a new assertion. This is why Logout protocols satisfy the Reestablish Session command contract, even though they terminate rather than mark the session Invalid.<a href="#section-5.2-2" class="pilcrow">¶</a></p>
 <div id="reestablish-bcl">
 <section id="section-5.2.1">
@@ -3950,7 +3942,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
             <p id="appendix-B.3-2.5.1">Look up all sessions by <code>sub</code> (and <code>tenant</code> if applicable)<a href="#appendix-B.3-2.5.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.3-2.6">
-            <p id="appendix-B.3-2.6.1">Suspend all matching RP client sessions (sessions are no longer accepted)<a href="#appendix-B.3-2.6.1" class="pilcrow">¶</a></p>
+            <p id="appendix-B.3-2.6.1">Expire all matching RP client sessions (sessions are no longer accepted)<a href="#appendix-B.3-2.6.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.3-2.7">
             <p id="appendix-B.3-2.7.1">Return success response<a href="#appendix-B.3-2.7.1" class="pilcrow">¶</a></p>
@@ -4040,7 +4032,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Description</td>
-              <td class="text-left" rowspan="1" colspan="1">Require the RP to mark the subject's sessions as Invalid and reestablish them through a full authentication at the Identity Service. The Identity Service re-evaluates policy, risk, and state to determine whether to grant continued access. The RP MUST NOT revoke OAuth tokens or API keys.</td>
+              <td class="text-left" rowspan="1" colspan="1">Require the RP to expire the subject's sessions and reestablish them through a full authentication at the Identity Service. The Identity Service re-evaluates policy, risk, and state to determine whether to grant continued access. The RP MUST NOT revoke OAuth tokens or API keys.</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Required claims</td>
@@ -4073,7 +4065,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
                 <code>reestablish</code>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Reestablish Session</td>
-              <td class="text-left" rowspan="1" colspan="1">Invalid + reestablish</td>
+              <td class="text-left" rowspan="1" colspan="1">Expired + reestablish</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
             </tr>
@@ -4131,7 +4123,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
                 <code>session-revoked</code> (reason: <code>timeout</code>, <code>policy-change</code>)</td>
               <td class="text-left" rowspan="1" colspan="1">Reestablish Session</td>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>MUST</strong> mark RP session Invalid and require reestablishment</td>
+                <strong>MUST</strong> expire RP session and require reestablishment with Forced Reauthentication</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
