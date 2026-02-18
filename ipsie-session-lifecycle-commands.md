@@ -120,7 +120,7 @@ informative:
 
 --- abstract
 
-This specification defines two lifecycle commands that an Identity Service can send to a Relying Party (RP) to manage federated session lifecycle: **Reestablish Session** and **Invalidate Authentication State**. These commands provide the Identity Service with on-demand control over RP session validity and authentication artifact acceptance, enabling access revalidation and security containment across federated systems. They do not affect authorization policy (roles, permissions, or entitlements) within the RP.
+This specification defines two lifecycle commands that an Identity Service can send to a Relying Party (RP) to manage federated session lifecycle: **Reestablish Session** and **Invalidate Access**. These commands provide the Identity Service with on-demand control over RP session validity and authentication artifact acceptance, enabling access revalidation and security containment across federated systems. They do not affect authorization policy (roles, permissions, or entitlements) within the RP.
 
 --- middle
 
@@ -135,7 +135,7 @@ These commands affect **session validity and the continued acceptability of prio
 | Command | Scope | Typical Trigger |
 |---------|-------|-----------------|
 | **Reestablish Session** | All RP client sessions for the subject | Policy change, risk signal, logout, session management |
-| **Invalidate Authentication State** | All sessions, tokens, and API keys | Account compromise, security incident |
+| **Invalidate Access** | All sessions, tokens, and API keys | Account compromise, security incident |
 
 ## IPSIE Session Lifecycle Levels {#lifecycle-levels}
 
@@ -144,12 +144,12 @@ The commands enable progressively greater Identity Service control over RP sessi
 | IPSIE Level | Session Control Model | Identity Service Control | Commands Required |
 |-------------|----------------------|--------------------------|-------------------|
 | **SL1** | Time-based only. RP expires session when assertion validity period ends or timeout occurs | None. Identity Service sets session lifetime via assertion claims (`exp`, `NotOnOrAfter`) | None |
-| **SL2** | Time-based and on-demand. Identity Service can require session reestablishment or full authentication state invalidation at any time | Direct. Identity Service sends Reestablish Session and Invalidate Authentication State commands to RP | **Reestablish Session** (REQUIRED), **Invalidate Authentication State** (REQUIRED) |
+| **SL2** | Time-based and on-demand. Identity Service can require session reestablishment or full authentication state invalidation at any time | Direct. Identity Service sends Reestablish Session and Invalidate Access commands to RP | **Reestablish Session** (REQUIRED), **Invalidate Access** (REQUIRED) |
 | **SL3** | Time-based, on-demand, and continuous. RP and Identity Service exchange state changes in real time via Shared Signals | Continuous. Bidirectional communication of session, device, and risk state changes via CAEP/SSF | Both SL2 commands (REQUIRED) + continuous access signals |
 
 **SL2 conformance** requires that:
 
-- The **Identity Service** MUST be able to send both Reestablish Session and Invalidate Authentication State commands to the Application
+- The **Identity Service** MUST be able to send both Reestablish Session and Invalidate Access commands to the Application
 - The **Application** MUST process and enforce both commands as defined in this specification
 - The **Application** MUST NOT accept unsolicited federation assertions (e.g., SAML IdP-initiated SSO)
 - The **Identity Service** MUST enforce authentication method requests from the Application
@@ -166,7 +166,7 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **
 The process of verifying the identity of a subject (user, device, or workload). {{NIST.SP.800-63-4}} §4
 
 **Authentication State**
-The collection of artifacts that together represent the outcome of a successful authentication event and allow a subject to continue accessing resources without reauthenticating. Authentication state includes the RP client session, access tokens, refresh tokens, and API keys that were established or issued as a result of the subject's authentication. Authentication state is scoped to a subject at a specific RP and is distinct from authorization state (roles, permissions, entitlements). In this specification, the Invalidate Authentication State command requires the RP to treat all of these artifacts as no longer valid. {{NIST.SP.800-63B}} §7 (session management), {{NIST.SP.800-63C}} §6 (assertion lifetime and protection), {{RFC6749}} §1.4, §1.5 (token lifecycle)
+The collection of artifacts that together represent the outcome of a successful authentication event and allow a subject to continue accessing resources without reauthenticating. Authentication state includes the RP client session, access tokens, refresh tokens, and API keys that were established or issued as a result of the subject's authentication. Authentication state is scoped to a subject at a specific RP and is distinct from authorization state (roles, permissions, entitlements). In this specification, the Invalidate Access command requires the RP to treat all of these artifacts as no longer valid. {{NIST.SP.800-63B}} §7 (session management), {{NIST.SP.800-63C}} §6 (assertion lifetime and protection), {{RFC6749}} §1.4, §1.5 (token lifecycle)
 
 **Authorization**
 The process of determining what actions or resources an authenticated subject is permitted to access. Authorization is distinct from authentication and is not affected by the commands defined in this specification. {{RFC6749}} §1.1
@@ -175,7 +175,7 @@ The process of determining what actions or resources an authenticated subject is
 A credential issued by an Authorization Server that represents the authorization granted to a client to access protected resources at a Resource Server. Access tokens have a limited lifetime and may be self-contained (e.g., JWT) or reference-based. {{RFC6749}} §1.4
 
 **API Key**
-A long-lived, static credential issued by the RP (not the Authorization Server) that grants API access to the RP's resources on behalf of a subject. API keys include service keys, personal access tokens (PATs), and static bearer tokens. Unlike OAuth tokens, API keys are typically not bound to an OAuth grant, are not rotated via refresh tokens, and may have no expiration. API keys are authentication artifacts and are within the scope of the Invalidate Authentication State command.
+A long-lived, static credential issued by the RP (not the Authorization Server) that grants API access to the RP's resources on behalf of a subject. API keys include service keys, personal access tokens (PATs), and static bearer tokens. Unlike OAuth tokens, API keys are typically not bound to an OAuth grant, are not rotated via refresh tokens, and may have no expiration. API keys are authentication artifacts and are within the scope of the Invalidate Access command.
 
 **Assertion**
 A statement from an Identity Provider to a Relying Party that conveys information about an authentication event and the authenticated subject. In OIDC, the ID Token serves as the assertion; in SAML, the `<Assertion>` element. {{NIST.SP.800-63C}} §4, {{OIDC.Core}} §2, {{SAML2.Core}} §2.3
@@ -193,7 +193,7 @@ The Identity Service that issued the original assertion establishing the subject
 The entity that authenticates subjects and issues assertions to Relying Parties. Also referred to as OpenID Provider (OP) in OIDC and Identity Provider (IdP) in SAML. {{OIDC.Core}} §1.2, {{SAML2.Core}} §2.2
 
 **Forced Reauthentication**
-An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new `auth_time`, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Authentication State commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. {{NIST.SP.800-63B}} §7.2
+An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new `auth_time`, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Access commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. {{NIST.SP.800-63B}} §7.2
 
 **Session Continuation**
 An authentication intent in which the RP requests authentication and the IdP determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements. No new authentication event occurs. The IdP reuses the existing session and its authentication context (`auth_time`, `acr`, `amr`). Session Continuation is the normal flow when the RP needs to reestablish local application state (e.g., after local session expiry, cookie loss, or RP-local logout) without requiring fresh authentication. See Section 3 for the full definition of authentication intents. {{NIST.SP.800-63C}} §5.3
@@ -211,7 +211,7 @@ The application or service that depends on the Identity Provider for authenticat
 The server hosting protected resources, capable of accepting and responding to requests using access tokens. {{RFC6749}} §1.1
 
 **Invalidate**
-To render an artifact (token, session, API key, or authentication state) no longer valid or trustworthy, regardless of its remaining lifetime. Invalidation is an active security operation, typically in response to a security event. In this specification, "Invalidate Authentication State" denotes the Identity Service-initiated command to invalidate all prior authentication artifacts for a subject. {{NIST.SP.800-63B}} §7.1
+To render an artifact (token, session, API key, or authentication state) no longer valid or trustworthy, regardless of its remaining lifetime. Invalidation is an active security operation, typically in response to a security event. In this specification, "Invalidate Access" denotes the Identity Service-initiated command to invalidate all prior authentication artifacts for a subject. {{NIST.SP.800-63B}} §7.1
 
 **Logout**
 An explicit action that terminates a subject's authenticated session at the RP, transitions the session to the **Terminated** state, and requires **Forced Reauthentication** before the subject can regain interactive access. Logout is distinct from time-based session expiry (which may allow Session Continuation) and from the Reestablish Session command (which expires the session without terminating it). Common forms include:
@@ -239,7 +239,7 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
 
 # Federated Session Lifecycle {#session-lifecycle}
 
-The Reestablish Session and Invalidate Authentication State commands, together with Logout, affect RP session and authentication state in distinct ways. Logout terminates the session while preserving tokens. Reestablish Session marks the session Invalid while preserving tokens. Invalidate Authentication State terminates the session and invalidates all artifacts. This section defines a **logical model** for the lifecycle of a federated authentication session at the Relying Party. The model provides a framework for understanding how each command transitions the subject's state. It describes the states and transitions of **RP session and authentication-artifact state**. It does not model RP subscriber account lifecycle (e.g., provisioning, disabling, or deleting accounts), which is addressed separately by the IPSIE Account Lifecycle (AL) levels.
+The Reestablish Session and Invalidate Access commands, together with Logout, affect RP session and authentication state in distinct ways. Logout terminates the session while preserving tokens. Reestablish Session marks the session Invalid while preserving tokens. Invalidate Access terminates the session and invalidates all artifacts. This section defines a **logical model** for the lifecycle of a federated authentication session at the Relying Party. The model provides a framework for understanding how each command transitions the subject's state. It describes the states and transitions of **RP session and authentication-artifact state**. It does not model RP subscriber account lifecycle (e.g., provisioning, disabling, or deleting accounts), which is addressed separately by the IPSIE Account Lifecycle (AL) levels.
 
 This model is **informational**. RPs are not required to implement these states or transitions internally. The normative requirements for RPs are defined by the lifecycle commands in Section 4. The model provides a shared vocabulary for reasoning about session state and the expected behavior of each command.
 
@@ -283,7 +283,7 @@ The lifecycle defines four progressive levels of Identity Service control over R
 | **1. Check-back** | **Expired** | Time-based expiry (inactivity or absolute timeout) | "Come back so I can re-evaluate" | Unchanged |
 | **2. Reestablish** | **Expired** | Reestablish Session command | "Come back now and prove it with full authentication" | Unchanged |
 | **3. Logout** | **Terminated** | Logout (user, admin, policy, or system-initiated) | Session ended; re-authentication required | Unchanged |
-| **4. Terminate** | **Terminated** | Invalidate Authentication State command | "Kill everything; security event" | Invalidated / revoked |
+| **4. Terminate** | **Terminated** | Invalidate Access command | "Kill everything; security event" | Invalidated / revoked |
 
 ## State Descriptions {#session-states}
 
@@ -314,7 +314,7 @@ The subject's RP client session is terminated and the subject must re-authentica
 
 - **Logout** (user, admin, policy, or system-initiated): The RP session is terminated. Tokens and API keys are typically preserved, as the subject may have active background processes. The Identity Service is given an opportunity to re-evaluate policy, risk, and account state before issuing a new assertion. See Section 2 for the definition of Logout.
 
-- **Invalidate Authentication State** command (SL2): The most severe level of Identity Service control, indicating a security event. All authentication artifacts (sessions, tokens, and API keys) are invalidated or revoked. Prior authentication artifacts MUST NOT be trusted.
+- **Invalidate Access** command (SL2): The most severe level of Identity Service control, indicating a security event. All authentication artifacts (sessions, tokens, and API keys) are invalidated or revoked. Prior authentication artifacts MUST NOT be trusted.
 
 In both cases the session authority is cleared. The subject returns to the Unauthenticated state and, if the RP supports multiple Identity Services, may select a different Identity Service when establishing a new session. {{NIST.SP.800-63B}} §7.1
 
@@ -328,7 +328,7 @@ In both cases the session authority is cleared. The subject returns to the Unaut
 | Active | Expired | Inactivity timeout or absolute timeout | Time-based; Session Continuation, Step-Up, or Forced Reauthentication permitted (SL1) |
 | Active | Expired | **Reestablish Session** command | Identity Service-initiated; Forced Reauthentication required (SL2) |
 | Active | Terminated | Logout (user, admin, policy, or system-initiated) | Subject cannot resume session; Forced Reauthentication required |
-| Active | Terminated | **Invalidate Authentication State** command | Identity Service-initiated security operation; all artifacts invalidated (SL2) |
+| Active | Terminated | **Invalidate Access** command | Identity Service-initiated security operation; all artifacts invalidated (SL2) |
 | Expired | Established | Subject requests access | Authentication intent depends on trigger (see Section 2) |
 | Terminated | Unauthenticated | *(immediate)* | Session authority cleared; subject may select a different IdP |
 
@@ -339,7 +339,7 @@ The Identity Service has four progressive levels of control over RP sessions:
 | | **Check-back** | **Reestablish** | **Logout** | **Invalidate** |
 |---|---|---|---|---|
 | **Identity Service intent** | Periodic re-evaluation | Forced re-evaluation now | Session ended | Security response |
-| **Trigger** | Time-based expiry | Reestablish Session command | User, admin, policy, or system | Invalidate Authentication State command |
+| **Trigger** | Time-based expiry | Reestablish Session command | User, admin, policy, or system | Invalidate Access command |
 | **Sessions** | Expired | Expired | Terminated | Terminated |
 | **Tokens** | Unchanged | Unchanged | Unchanged | Invalidated |
 | **API keys** | Unchanged | Unchanged | Unchanged | Revoked |
@@ -443,7 +443,7 @@ When performing Forced Reauthentication:
 Forced Reauthentication is commonly applicable when:
 
 * The RP has received a **Reestablish Session** command from the IdP.
-* The RP has received an **Invalidate Authentication State** command from the IdP.
+* The RP has received an **Invalidate Access** command from the IdP.
 * An Identity Service-initiated logout or account recovery has occurred.
 * Regulatory or security policy mandates reauthentication.
 
@@ -479,7 +479,7 @@ Both lifecycle commands defined in this specification require the RP to trigger 
 | Command | Required Authentication Intent | Rationale |
 |---------|------------------------------|-----------|
 | **Reestablish Session** | Forced Reauthentication | The Identity Service must perform a full policy evaluation to determine whether to grant continued access. Reusing an existing session would bypass this evaluation. |
-| **Invalidate Authentication State** | Forced Reauthentication | All prior authentication artifacts are invalidated. A completely new authentication is required. |
+| **Invalidate Access** | Forced Reauthentication | All prior authentication artifacts are invalidated. A completely new authentication is required. |
 
 When no command has been received (for example, when the RP's local session has expired, cookies have been lost, or the RP has performed an RP-local logout), the RP **MAY** allow Session Continuation. In this case, the RP does not include `prompt=login` or `ForceAuthn="true"`, and the IdP may satisfy the request from an existing authentication session.
 
@@ -492,7 +492,7 @@ The authentication intent used when the subject returns to the Established state
 | **Expired** | Inactivity timeout or absolute timeout | Session Continuation, Step-Up, or Forced Reauthentication | IdP session may still be valid; IdP re-evaluates on check-back |
 | **Expired** | Reestablish Session command | **Forced Reauthentication ONLY** | Identity Service explicitly requires full policy re-evaluation; RP MUST use `prompt=login` / `ForceAuthn="true"`; IdP MUST require new authentication ceremony |
 | **Terminated** | Logout (user, admin, policy, or system-initiated) | **Forced Reauthentication ONLY** | Session ended; subject must re-authenticate through the Identity Service |
-| **Terminated** | Invalidate Authentication State command | **Forced Reauthentication ONLY** | Security event; all prior artifacts are untrusted; full authentication required |
+| **Terminated** | Invalidate Access command | **Forced Reauthentication ONLY** | Security event; all prior artifacts are untrusted; full authentication required |
 
 
 # Lifecycle Command Definitions {#commands}
@@ -537,7 +537,7 @@ When an Identity Service sends this command, it **MAY**:
 | IdP SSO session | **MAY** be expired |
 | Authorization grants | **Unchanged** |
 
-## Invalidate Authentication State {#cmd-invalidate}
+## Invalidate Access {#cmd-invalidate}
 
 An Identity Service command requiring **the RP** to treat all existing authentication artifacts as untrusted, including sessions, access tokens, refresh tokens, and API keys. This command transitions the session to the **Terminated** state (see Section 2), which invalidates all artifacts and requires **Forced Reauthentication**. This is the most severe level of Identity Service control, indicating a security event.
 
@@ -600,9 +600,9 @@ The RP **SHOULD** include the following claims in the `session-revoked` event:
 
 The RP **SHOULD NOT** publish `credential-change` events for Reestablish Session, as tokens and API keys are unaffected.
 
-### Invalidate Authentication State Events {#caep-invalidate}
+### Invalidate Access Events {#caep-invalidate}
 
-After processing an Invalidate Authentication State command, the RP **SHOULD** publish:
+After processing an Invalidate Access command, the RP **SHOULD** publish:
 
 | CAEP Event | URI | Purpose |
 |------------|-----|---------|
@@ -643,12 +643,12 @@ The RP **MAY** use the `jti` claim (when present) to detect duplicate commands f
 
 ### Command Ordering {#command-ordering}
 
-Invalidate Authentication State is a strict superset of Reestablish Session. It includes all session invalidation steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the **Expired** state while Invalidate Authentication State transitions to the **Terminated** state (see Section 2.4).
+Invalidate Access is a strict superset of Reestablish Session. It includes all session invalidation steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the **Expired** state while Invalidate Access transitions to the **Terminated** state (see Section 2.4).
 
 If both commands are received for the same subject:
 
-- **Reestablish Session after Invalidate Authentication State:** The RP **MUST** succeed. The session is already in the Terminated state. All artifacts are invalidated. No further action is needed.
-- **Invalidate Authentication State after Reestablish Session:** The RP **MUST** process the full Invalidate Authentication State command. The session transitions from the Expired state to the Terminated state. Sessions are already expired, but the RP must additionally invalidate tokens and revoke API keys.
+- **Reestablish Session after Invalidate Access:** The RP **MUST** succeed. The session is already in the Terminated state. All artifacts are invalidated. No further action is needed.
+- **Invalidate Access after Reestablish Session:** The RP **MUST** process the full Invalidate Access command. The session transitions from the Expired state to the Terminated state. Sessions are already expired, but the RP must additionally invalidate tokens and revoke API keys.
 
 In general, the RP **SHOULD** apply each command to the current state of the subject's artifacts. A command succeeds if the resulting state defined in Sections 4.1.3 or 4.2.3 is achieved, regardless of what prior state existed.
 
@@ -661,7 +661,7 @@ A protocol maps to a command only if it can **fully complete** that command. Pro
 
 Each command defines a complete resulting state (Sections 4.1.3 and 4.2.3). A protocol implementation **MUST** achieve the full resulting state of a command to claim support for that command. Partial fulfillment is not sufficient.
 
-**Implication:** It is acceptable for a protocol to support only one of the two commands. For example, OIDC Back-Channel Logout can fully complete "Reestablish Session" but cannot on its own complete "Invalidate Authentication State" (it does not revoke tokens). Similarly, OAuth Token Revocation {{RFC7009}} revokes tokens but does not expire RP client sessions, so it cannot complete either command alone.
+**Implication:** It is acceptable for a protocol to support only one of the two commands. For example, OIDC Back-Channel Logout can fully complete "Reestablish Session" but cannot on its own complete "Invalidate Access" (it does not revoke tokens). Similarly, OAuth Token Revocation {{RFC7009}} revokes tokens but does not expire RP client sessions, so it cannot complete either command alone.
 
 ## Reestablish Session: Protocol Mappings {#reestablish-mappings}
 
@@ -731,13 +731,13 @@ This specification proposes a new OP Command type **`reestablish`** as an extens
 
 See Appendix B for RP implementation steps.
 
-## Invalidate Authentication State: Protocol Mappings {#revoke-mappings}
+## Invalidate Access: Protocol Mappings {#revoke-mappings}
 
 ### OpenID Provider Commands: `invalidate` (RECOMMENDED) {#revoke-op-invalidate}
 
 **Specification:** {{OP-Commands}}
 
-The OP Command type **`invalidate`** maps to the Invalidate Authentication State lifecycle command, transitioning the session to the **Terminated** state. The `invalidate` command is a **strict superset** of the `reestablish` command. It includes all session invalidation steps plus token invalidation and API key revocation. When the Identity Service sends `invalidate`, it signals that all prior authentication artifacts for the subject must be treated as untrusted.
+The OP Command type **`invalidate`** maps to the Invalidate Access lifecycle command, transitioning the session to the **Terminated** state. The `invalidate` command is a **strict superset** of the `reestablish` command. It includes all session invalidation steps plus token invalidation and API key revocation. When the Identity Service sends `invalidate`, it signals that all prior authentication artifacts for the subject must be treated as untrusted.
 
 | Element | Value / Behavior |
 |---------|-----------------|
@@ -746,13 +746,13 @@ The OP Command type **`invalidate`** maps to the Invalidate Authentication State
 | Token type | JWT with `typ: command+jwt`, signed with Identity Service signing keys |
 | Required claims | `iss`, `aud`, `client_id`, `iat`, `exp`, `jti`, `command`, `tenant`, `sub` |
 | RP behavior | Invalidate RP client session, invalidate all existing access and refresh tokens, revoke all API keys for the subject, require reauthentication |
-| **Completes command?** | **Yes** — fully satisfies Invalidate Authentication State |
+| **Completes command?** | **Yes** — fully satisfies Invalidate Access |
 
 See Appendix B for RP implementation steps. See Section 7 for self-contained JWT access token considerations.
 
 ### Protocol Comparison {#revoke-protocol-comparison}
 
-The following table compares the scope of each protocol when used for the Invalidate Authentication State command.
+The following table compares the scope of each protocol when used for the Invalidate Access command.
 
 | Protocol | Invalidates RP session? | Invalidates tokens? | Revokes API keys? | Completes command alone? |
 |----------|----------------------|-------------------|------------------|------------------------------|
@@ -808,7 +808,7 @@ The following protocols may be used as **supplementary components** when OP Comm
 
 Both commands are **REQUIRED at SL2**. The following table summarizes which command each protocol can fully complete.
 
-| Protocol | Reestablish Session (SL2) | Invalidate Authentication State (SL2) |
+| Protocol | Reestablish Session (SL2) | Invalidate Access (SL2) |
 |----------|---------------------|----------------------------|
 | **OP Commands (`reestablish`)** | **PROPOSED** — completes command when adopted (see Appendix C) | Not applicable |
 | **OP Commands (`invalidate`)** | Not applicable | **RECOMMENDED** — completes command (sessions + tokens + API keys) |
@@ -837,7 +837,7 @@ A single protocol can fully complete this command.
 **Fallback (ACCEPTABLE):**
 - SAML 2.0 SLO (back-channel SOAP binding)
 
-## Invalidate Authentication State (SL2 REQUIRED) {#rec-revoke}
+## Invalidate Access (SL2 REQUIRED) {#rec-revoke}
 
 **Primary (RECOMMENDED):**
 - OP Commands (`invalidate`): completes the command in a single protocol exchange
@@ -855,11 +855,11 @@ When OP Commands is not available, implementations MUST compose protocols to ach
 
 # Self-Contained JWT Access Token Considerations {#jwt-tokens}
 
-Self-contained JWT access tokens present a unique challenge for "Invalidate Authentication State" because they are validated locally by the Resource Server without contacting the Authorization Server. If the RP cannot invalidate these tokens on demand, the token lifetime becomes the maximum exposure window during which an invalidated token may still be accepted.
+Self-contained JWT access tokens present a unique challenge for "Invalidate Access" because they are validated locally by the Resource Server without contacting the Authorization Server. If the RP cannot invalidate these tokens on demand, the token lifetime becomes the maximum exposure window during which an invalidated token may still be accepted.
 
 ## On-Demand Invalidation {#jwt-on-demand}
 
-RPs that can invalidate self-contained access tokens immediately upon receiving an Invalidate Authentication State command (for example, via revocation lists, status lists {{TokenStatusList}}, or event-driven invalidation (CAEP/SSF)) are not subject to the maximum TTL constraints in Section 7.2.
+RPs that can invalidate self-contained access tokens immediately upon receiving an Invalidate Access command (for example, via revocation lists, status lists {{TokenStatusList}}, or event-driven invalidation (CAEP/SSF)) are not subject to the maximum TTL constraints in Section 7.2.
 
 | Strategy | Effectiveness | Tradeoff |
 |----------|--------------|----------|
@@ -879,7 +879,7 @@ When the RP **cannot** invalidate self-contained access tokens on demand, the to
 
 The `exp` claim in a self-contained access token **MUST NOT** exceed the maximum TTL for the applicable IPSIE level, measured from the `iat` claim. When the RP operates its own Authorization Server, that Authorization Server **MUST** enforce these limits at token issuance.
 
-For "Invalidate Authentication State," implementers **SHOULD** implement on-demand invalidation (Section 7.1) rather than relying solely on token expiry.
+For "Invalidate Access," implementers **SHOULD** implement on-demand invalidation (Section 7.1) rather than relying solely on token expiry.
 
 
 # Security Considerations {#security}
@@ -889,7 +889,7 @@ For "Invalidate Authentication State," implementers **SHOULD** implement on-dema
 - **Replay protection:** Lifecycle commands **MUST** include a `jti` (JWT ID) claim and an `exp` claim. RPs **SHOULD** reject commands with expired `exp` or duplicate `jti` values within a reasonable window.
 - **Sender authorization:** RPs **MUST** verify that lifecycle commands originate from a trusted Identity Service (e.g., by validating the `iss` claim against known Identity Service metadata and verifying the signature against the Identity Service's JWKS).
 - **Command endpoint protection:** RP command endpoints **MUST** be protected against unauthorized access. Endpoints **SHOULD** implement rate limiting to reduce the risk of denial-of-service via command flooding.
-- **Fail-secure:** When a command type is unknown or cannot be parsed, RPs **SHOULD** default to the more restrictive behavior (treat as Invalidate Authentication State). Note that this fail-secure behavior could itself be a denial-of-service vector if an attacker can submit malformed commands; RPs **MUST** enforce sender authorization before applying fail-secure defaults.
+- **Fail-secure:** When a command type is unknown or cannot be parsed, RPs **SHOULD** default to the more restrictive behavior (treat as Invalidate Access). Note that this fail-secure behavior could itself be a denial-of-service vector if an attacker can submit malformed commands; RPs **MUST** enforce sender authorization before applying fail-secure defaults.
 - **Enforcement gaps:** Browser-dependent mechanisms (Front-Channel Logout, front-channel SAML SLO) may fail silently if the browser is closed or third-party cookies are blocked. Implementers **SHOULD** prefer back-channel mechanisms for security-critical commands.
 
 --- back
@@ -973,7 +973,7 @@ IdP --reestablish--> SaaS Application (RP)
 
 All of the user's interactive sessions are expired. First-party clients holding valid access tokens or refresh tokens continue to operate. Background API integrations using API keys are unaffected. The user must complete a full authentication at the IdP, where the IdP re-evaluates policy, risk, and state, to establish a new session.
 
-**Invalidate Authentication State:** IdP sends `invalidate`:
+**Invalidate Access:** IdP sends `invalidate`:
 
 ~~~ ascii-art
 IdP --invalidate--> SaaS Application (RP)
@@ -1068,7 +1068,7 @@ The `invalidate` command is a **strict superset** of `reestablish`. It performs 
 | OP Command | Lifecycle Command | Session | Tokens | API Keys |
 |------------|-------------------|---------|--------|----------|
 | `reestablish` | Reestablish Session | Expired + reestablish | Unchanged | Unchanged |
-| `invalidate` | Invalidate Authentication State | Terminated (superset of reestablish) | Invalidate all | Revoke all |
+| `invalidate` | Invalidate Access | Terminated (superset of reestablish) | Invalidate all | Revoke all |
 
 The RP **MUST** treat `reestablish` and `invalidate` as distinct commands with different scopes. Receiving `reestablish` **MUST NOT** trigger token invalidation; receiving `invalidate` **MUST** perform all `reestablish` steps and additionally invalidate tokens and revoke API keys.
 
@@ -1086,10 +1086,10 @@ The RP **MUST** treat `reestablish` and `invalidate` as distinct commands with d
 |------------|----------------|-------------|
 | `session-revoked` (reason: `logout`) | Logout | **MUST** terminate RP session (tokens preserved); Forced Reauthentication required |
 | `session-revoked` (reason: `timeout`, `policy-change`) | Reestablish Session | **MUST** expire RP session and require reestablishment with Forced Reauthentication |
-| `session-revoked` (reason: `policy-violation`, `compromise`) | Invalidate Authentication State | **MUST** terminate session, invalidate tokens, and revoke API keys |
-| `credential-change` (change type: `revoke`) | Invalidate Authentication State | **MUST** terminate session, invalidate tokens, and revoke API keys |
+| `session-revoked` (reason: `policy-violation`, `compromise`) | Invalidate Access | **MUST** terminate session, invalidate tokens, and revoke API keys |
+| `credential-change` (change type: `revoke`) | Invalidate Access | **MUST** terminate session, invalidate tokens, and revoke API keys |
 
-**Note on `credential-change` mapping:** Only `credential-change` events with a change type of `revoke` map to Invalidate Authentication State. Routine credential changes (e.g., password updates or MFA device additions with change type `create` or `update`) do NOT mandate this command; the Identity Service's policy determines whether such events warrant access revalidation.
+**Note on `credential-change` mapping:** Only `credential-change` events with a change type of `revoke` map to Invalidate Access. Routine credential changes (e.g., password updates or MFA device additions with change type `create` or `update`) do NOT mandate this command; the Identity Service's policy determines whether such events warrant access revalidation.
 
 
 # Change Log {#changelog}

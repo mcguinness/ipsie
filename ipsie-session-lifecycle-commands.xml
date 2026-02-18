@@ -36,7 +36,7 @@
 
 <?line 121?>
 
-<t>This specification defines two lifecycle commands that an Identity Service can send to a Relying Party (RP) to manage federated session lifecycle: <strong>Reestablish Session</strong> and <strong>Invalidate Authentication State</strong>. These commands provide the Identity Service with on-demand control over RP session validity and authentication artifact acceptance, enabling access revalidation and security containment across federated systems. They do not affect authorization policy (roles, permissions, or entitlements) within the RP.</t>
+<t>This specification defines two lifecycle commands that an Identity Service can send to a Relying Party (RP) to manage federated session lifecycle: <strong>Reestablish Session</strong> and <strong>Invalidate Access</strong>. These commands provide the Identity Service with on-demand control over RP session validity and authentication artifact acceptance, enabling access revalidation and security containment across federated systems. They do not affect authorization policy (roles, permissions, or entitlements) within the RP.</t>
 
 
 
@@ -66,7 +66,7 @@
       <c><strong>Reestablish Session</strong></c>
       <c>All RP client sessions for the subject</c>
       <c>Policy change, risk signal, logout, session management</c>
-      <c><strong>Invalidate Authentication State</strong></c>
+      <c><strong>Invalidate Access</strong></c>
       <c>All sessions, tokens, and API keys</c>
       <c>Account compromise, security incident</c>
 </texttable>
@@ -86,8 +86,8 @@
       <c>None</c>
       <c><strong>SL2</strong></c>
       <c>Time-based and on-demand. Identity Service can require session reestablishment or full authentication state invalidation at any time</c>
-      <c>Direct. Identity Service sends Reestablish Session and Invalidate Authentication State commands to RP</c>
-      <c><strong>Reestablish Session</strong> (REQUIRED), <strong>Invalidate Authentication State</strong> (REQUIRED)</c>
+      <c>Direct. Identity Service sends Reestablish Session and Invalidate Access commands to RP</c>
+      <c><strong>Reestablish Session</strong> (REQUIRED), <strong>Invalidate Access</strong> (REQUIRED)</c>
       <c><strong>SL3</strong></c>
       <c>Time-based, on-demand, and continuous. RP and Identity Service exchange state changes in real time via Shared Signals</c>
       <c>Continuous. Bidirectional communication of session, device, and risk state changes via CAEP/SSF</c>
@@ -97,7 +97,7 @@
 <t><strong>SL2 conformance</strong> requires that:</t>
 
 <t><list style="symbols">
-  <t>The <strong>Identity Service</strong> MUST be able to send both Reestablish Session and Invalidate Authentication State commands to the Application</t>
+  <t>The <strong>Identity Service</strong> MUST be able to send both Reestablish Session and Invalidate Access commands to the Application</t>
   <t>The <strong>Application</strong> MUST process and enforce both commands as defined in this specification</t>
   <t>The <strong>Application</strong> MUST NOT accept unsolicited federation assertions (e.g., SAML IdP-initiated SSO)</t>
   <t>The <strong>Identity Service</strong> MUST enforce authentication method requests from the Application</t>
@@ -117,7 +117,7 @@
 The process of verifying the identity of a subject (user, device, or workload). <xref target="NIST.SP.800-63-4"/> §4</t>
 
 <t><strong>Authentication State</strong>
-The collection of artifacts that together represent the outcome of a successful authentication event and allow a subject to continue accessing resources without reauthenticating. Authentication state includes the RP client session, access tokens, refresh tokens, and API keys that were established or issued as a result of the subject's authentication. Authentication state is scoped to a subject at a specific RP and is distinct from authorization state (roles, permissions, entitlements). In this specification, the Invalidate Authentication State command requires the RP to treat all of these artifacts as no longer valid. <xref target="NIST.SP.800-63B"/> §7 (session management), <xref target="NIST.SP.800-63C"/> §6 (assertion lifetime and protection), <xref target="RFC6749"/> §1.4, §1.5 (token lifecycle)</t>
+The collection of artifacts that together represent the outcome of a successful authentication event and allow a subject to continue accessing resources without reauthenticating. Authentication state includes the RP client session, access tokens, refresh tokens, and API keys that were established or issued as a result of the subject's authentication. Authentication state is scoped to a subject at a specific RP and is distinct from authorization state (roles, permissions, entitlements). In this specification, the Invalidate Access command requires the RP to treat all of these artifacts as no longer valid. <xref target="NIST.SP.800-63B"/> §7 (session management), <xref target="NIST.SP.800-63C"/> §6 (assertion lifetime and protection), <xref target="RFC6749"/> §1.4, §1.5 (token lifecycle)</t>
 
 <t><strong>Authorization</strong>
 The process of determining what actions or resources an authenticated subject is permitted to access. Authorization is distinct from authentication and is not affected by the commands defined in this specification. <xref target="RFC6749"/> §1.1</t>
@@ -126,7 +126,7 @@ The process of determining what actions or resources an authenticated subject is
 A credential issued by an Authorization Server that represents the authorization granted to a client to access protected resources at a Resource Server. Access tokens have a limited lifetime and may be self-contained (e.g., JWT) or reference-based. <xref target="RFC6749"/> §1.4</t>
 
 <t><strong>API Key</strong>
-A long-lived, static credential issued by the RP (not the Authorization Server) that grants API access to the RP's resources on behalf of a subject. API keys include service keys, personal access tokens (PATs), and static bearer tokens. Unlike OAuth tokens, API keys are typically not bound to an OAuth grant, are not rotated via refresh tokens, and may have no expiration. API keys are authentication artifacts and are within the scope of the Invalidate Authentication State command.</t>
+A long-lived, static credential issued by the RP (not the Authorization Server) that grants API access to the RP's resources on behalf of a subject. API keys include service keys, personal access tokens (PATs), and static bearer tokens. Unlike OAuth tokens, API keys are typically not bound to an OAuth grant, are not rotated via refresh tokens, and may have no expiration. API keys are authentication artifacts and are within the scope of the Invalidate Access command.</t>
 
 <t><strong>Assertion</strong>
 A statement from an Identity Provider to a Relying Party that conveys information about an authentication event and the authenticated subject. In OIDC, the ID Token serves as the assertion; in SAML, the <spanx style="verb">&lt;Assertion&gt;</spanx> element. <xref target="NIST.SP.800-63C"/> §4, <xref target="OIDC.Core"/> §2, <xref target="SAML2.Core"/> §2.3</t>
@@ -144,7 +144,7 @@ The Identity Service that issued the original assertion establishing the subject
 The entity that authenticates subjects and issues assertions to Relying Parties. Also referred to as OpenID Provider (OP) in OIDC and Identity Provider (IdP) in SAML. <xref target="OIDC.Core"/> §1.2, <xref target="SAML2.Core"/> §2.2</t>
 
 <t><strong>Forced Reauthentication</strong>
-An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new <spanx style="verb">auth_time</spanx>, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Authentication State commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. <xref target="NIST.SP.800-63B"/> §7.2</t>
+An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new <spanx style="verb">auth_time</spanx>, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Access commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. <xref target="NIST.SP.800-63B"/> §7.2</t>
 
 <t><strong>Session Continuation</strong>
 An authentication intent in which the RP requests authentication and the IdP determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements. No new authentication event occurs. The IdP reuses the existing session and its authentication context (<spanx style="verb">auth_time</spanx>, <spanx style="verb">acr</spanx>, <spanx style="verb">amr</spanx>). Session Continuation is the normal flow when the RP needs to reestablish local application state (e.g., after local session expiry, cookie loss, or RP-local logout) without requiring fresh authentication. See Section 3 for the full definition of authentication intents. <xref target="NIST.SP.800-63C"/> §5.3</t>
@@ -162,7 +162,7 @@ The application or service that depends on the Identity Provider for authenticat
 The server hosting protected resources, capable of accepting and responding to requests using access tokens. <xref target="RFC6749"/> §1.1</t>
 
 <t><strong>Invalidate</strong>
-To render an artifact (token, session, API key, or authentication state) no longer valid or trustworthy, regardless of its remaining lifetime. Invalidation is an active security operation, typically in response to a security event. In this specification, "Invalidate Authentication State" denotes the Identity Service-initiated command to invalidate all prior authentication artifacts for a subject. <xref target="NIST.SP.800-63B"/> §7.1</t>
+To render an artifact (token, session, API key, or authentication state) no longer valid or trustworthy, regardless of its remaining lifetime. Invalidation is an active security operation, typically in response to a security event. In this specification, "Invalidate Access" denotes the Identity Service-initiated command to invalidate all prior authentication artifacts for a subject. <xref target="NIST.SP.800-63B"/> §7.1</t>
 
 <t><strong>Logout</strong>
 An explicit action that terminates a subject's authenticated session at the RP, transitions the session to the <strong>Terminated</strong> state, and requires <strong>Forced Reauthentication</strong> before the subject can regain interactive access. Logout is distinct from time-based session expiry (which may allow Session Continuation) and from the Reestablish Session command (which expires the session without terminating it). Common forms include:</t>
@@ -191,7 +191,7 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
 </section>
 <section anchor="session-lifecycle"><name>Federated Session Lifecycle</name>
 
-<t>The Reestablish Session and Invalidate Authentication State commands, together with Logout, affect RP session and authentication state in distinct ways. Logout terminates the session while preserving tokens. Reestablish Session marks the session Invalid while preserving tokens. Invalidate Authentication State terminates the session and invalidates all artifacts. This section defines a <strong>logical model</strong> for the lifecycle of a federated authentication session at the Relying Party. The model provides a framework for understanding how each command transitions the subject's state. It describes the states and transitions of <strong>RP session and authentication-artifact state</strong>. It does not model RP subscriber account lifecycle (e.g., provisioning, disabling, or deleting accounts), which is addressed separately by the IPSIE Account Lifecycle (AL) levels.</t>
+<t>The Reestablish Session and Invalidate Access commands, together with Logout, affect RP session and authentication state in distinct ways. Logout terminates the session while preserving tokens. Reestablish Session marks the session Invalid while preserving tokens. Invalidate Access terminates the session and invalidates all artifacts. This section defines a <strong>logical model</strong> for the lifecycle of a federated authentication session at the Relying Party. The model provides a framework for understanding how each command transitions the subject's state. It describes the states and transitions of <strong>RP session and authentication-artifact state</strong>. It does not model RP subscriber account lifecycle (e.g., provisioning, disabling, or deleting accounts), which is addressed separately by the IPSIE Account Lifecycle (AL) levels.</t>
 
 <t>This model is <strong>informational</strong>. RPs are not required to implement these states or transitions internally. The normative requirements for RPs are defined by the lifecycle commands in Section 4. The model provides a shared vocabulary for reasoning about session state and the expected behavior of each command.</t>
 
@@ -253,7 +253,7 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
       <c>Unchanged</c>
       <c><strong>4. Terminate</strong></c>
       <c><strong>Terminated</strong></c>
-      <c>Invalidate Authentication State command</c>
+      <c>Invalidate Access command</c>
       <c>"Kill everything; security event"</c>
       <c>Invalidated / revoked</c>
 </texttable>
@@ -292,7 +292,7 @@ The subject's RP client session is terminated and the subject must re-authentica
 
 <t><list style="symbols">
   <t><strong>Logout</strong> (user, admin, policy, or system-initiated): The RP session is terminated. Tokens and API keys are typically preserved, as the subject may have active background processes. The Identity Service is given an opportunity to re-evaluate policy, risk, and account state before issuing a new assertion. See Section 2 for the definition of Logout.</t>
-  <t><strong>Invalidate Authentication State</strong> command (SL2): The most severe level of Identity Service control, indicating a security event. All authentication artifacts (sessions, tokens, and API keys) are invalidated or revoked. Prior authentication artifacts MUST NOT be trusted.</t>
+  <t><strong>Invalidate Access</strong> command (SL2): The most severe level of Identity Service control, indicating a security event. All authentication artifacts (sessions, tokens, and API keys) are invalidated or revoked. Prior authentication artifacts MUST NOT be trusted.</t>
 </list></t>
 
 <t>In both cases the session authority is cleared. The subject returns to the Unauthenticated state and, if the RP supports multiple Identity Services, may select a different Identity Service when establishing a new session. <xref target="NIST.SP.800-63B"/> §7.1</t>
@@ -331,7 +331,7 @@ The subject's RP client session is terminated and the subject must re-authentica
       <c>Subject cannot resume session; Forced Reauthentication required</c>
       <c>Active</c>
       <c>Terminated</c>
-      <c><strong>Invalidate Authentication State</strong> command</c>
+      <c><strong>Invalidate Access</strong> command</c>
       <c>Identity Service-initiated security operation; all artifacts invalidated (SL2)</c>
       <c>Expired</c>
       <c>Established</c>
@@ -363,7 +363,7 @@ The subject's RP client session is terminated and the subject must re-authentica
       <c>Time-based expiry</c>
       <c>Reestablish Session command</c>
       <c>User, admin, policy, or system</c>
-      <c>Invalidate Authentication State command</c>
+      <c>Invalidate Access command</c>
       <c><strong>Sessions</strong></c>
       <c>Expired</c>
       <c>Expired</c>
@@ -527,7 +527,7 @@ The subject's RP client session is terminated and the subject must re-authentica
 
 <t><list style="symbols">
   <t>The RP has received a <strong>Reestablish Session</strong> command from the IdP.</t>
-  <t>The RP has received an <strong>Invalidate Authentication State</strong> command from the IdP.</t>
+  <t>The RP has received an <strong>Invalidate Access</strong> command from the IdP.</t>
   <t>An Identity Service-initiated logout or account recovery has occurred.</t>
   <t>Regulatory or security policy mandates reauthentication.</t>
 </list></t>
@@ -610,7 +610,7 @@ The subject's RP client session is terminated and the subject must re-authentica
       <c><strong>Reestablish Session</strong></c>
       <c>Forced Reauthentication</c>
       <c>The Identity Service must perform a full policy evaluation to determine whether to grant continued access. Reusing an existing session would bypass this evaluation.</c>
-      <c><strong>Invalidate Authentication State</strong></c>
+      <c><strong>Invalidate Access</strong></c>
       <c>Forced Reauthentication</c>
       <c>All prior authentication artifacts are invalidated. A completely new authentication is required.</c>
 </texttable>
@@ -640,7 +640,7 @@ The subject's RP client session is terminated and the subject must re-authentica
       <c><strong>Forced Reauthentication ONLY</strong></c>
       <c>Session ended; subject must re-authenticate through the Identity Service</c>
       <c><strong>Terminated</strong></c>
-      <c>Invalidate Authentication State command</c>
+      <c>Invalidate Access command</c>
       <c><strong>Forced Reauthentication ONLY</strong></c>
       <c>Security event; all prior artifacts are untrusted; full authentication required</c>
 </texttable>
@@ -707,7 +707,7 @@ The subject's RP client session is terminated and the subject must re-authentica
 
 </section>
 </section>
-<section anchor="cmd-invalidate"><name>Invalidate Authentication State</name>
+<section anchor="cmd-invalidate"><name>Invalidate Access</name>
 
 <t>An Identity Service command requiring <strong>the RP</strong> to treat all existing authentication artifacts as untrusted, including sessions, access tokens, refresh tokens, and API keys. This command transitions the session to the <strong>Terminated</strong> state (see Section 2), which invalidates all artifacts and requires <strong>Forced Reauthentication</strong>. This is the most severe level of Identity Service control, indicating a security event.</t>
 
@@ -796,9 +796,9 @@ The subject's RP client session is terminated and the subject must re-authentica
 <t>The RP <strong>SHOULD NOT</strong> publish <spanx style="verb">credential-change</spanx> events for Reestablish Session, as tokens and API keys are unaffected.</t>
 
 </section>
-<section anchor="caep-invalidate"><name>Invalidate Authentication State Events</name>
+<section anchor="caep-invalidate"><name>Invalidate Access Events</name>
 
-<t>After processing an Invalidate Authentication State command, the RP <strong>SHOULD</strong> publish:</t>
+<t>After processing an Invalidate Access command, the RP <strong>SHOULD</strong> publish:</t>
 
 <texttable>
       <ttcol align='left'>CAEP Event</ttcol>
@@ -861,13 +861,13 @@ The subject's RP client session is terminated and the subject must re-authentica
 </section>
 <section anchor="command-ordering"><name>Command Ordering</name>
 
-<t>Invalidate Authentication State is a strict superset of Reestablish Session. It includes all session invalidation steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the <strong>Expired</strong> state while Invalidate Authentication State transitions to the <strong>Terminated</strong> state (see Section 2.4).</t>
+<t>Invalidate Access is a strict superset of Reestablish Session. It includes all session invalidation steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the <strong>Expired</strong> state while Invalidate Access transitions to the <strong>Terminated</strong> state (see Section 2.4).</t>
 
 <t>If both commands are received for the same subject:</t>
 
 <t><list style="symbols">
-  <t><strong>Reestablish Session after Invalidate Authentication State:</strong> The RP <strong>MUST</strong> succeed. The session is already in the Terminated state. All artifacts are invalidated. No further action is needed.</t>
-  <t><strong>Invalidate Authentication State after Reestablish Session:</strong> The RP <strong>MUST</strong> process the full Invalidate Authentication State command. The session transitions from the Expired state to the Terminated state. Sessions are already expired, but the RP must additionally invalidate tokens and revoke API keys.</t>
+  <t><strong>Reestablish Session after Invalidate Access:</strong> The RP <strong>MUST</strong> succeed. The session is already in the Terminated state. All artifacts are invalidated. No further action is needed.</t>
+  <t><strong>Invalidate Access after Reestablish Session:</strong> The RP <strong>MUST</strong> process the full Invalidate Access command. The session transitions from the Expired state to the Terminated state. Sessions are already expired, but the RP must additionally invalidate tokens and revoke API keys.</t>
 </list></t>
 
 <t>In general, the RP <strong>SHOULD</strong> apply each command to the current state of the subject's artifacts. A command succeeds if the resulting state defined in Sections 4.1.3 or 4.2.3 is achieved, regardless of what prior state existed.</t>
@@ -883,7 +883,7 @@ The subject's RP client session is terminated and the subject must re-authentica
 
 <t>Each command defines a complete resulting state (Sections 4.1.3 and 4.2.3). A protocol implementation <strong>MUST</strong> achieve the full resulting state of a command to claim support for that command. Partial fulfillment is not sufficient.</t>
 
-<t><strong>Implication:</strong> It is acceptable for a protocol to support only one of the two commands. For example, OIDC Back-Channel Logout can fully complete "Reestablish Session" but cannot on its own complete "Invalidate Authentication State" (it does not revoke tokens). Similarly, OAuth Token Revocation <xref target="RFC7009"/> revokes tokens but does not expire RP client sessions, so it cannot complete either command alone.</t>
+<t><strong>Implication:</strong> It is acceptable for a protocol to support only one of the two commands. For example, OIDC Back-Channel Logout can fully complete "Reestablish Session" but cannot on its own complete "Invalidate Access" (it does not revoke tokens). Similarly, OAuth Token Revocation <xref target="RFC7009"/> revokes tokens but does not expire RP client sessions, so it cannot complete either command alone.</t>
 
 </section>
 <section anchor="reestablish-mappings"><name>Reestablish Session: Protocol Mappings</name>
@@ -989,13 +989,13 @@ The subject's RP client session is terminated and the subject must re-authentica
 
 </section>
 </section>
-<section anchor="revoke-mappings"><name>Invalidate Authentication State: Protocol Mappings</name>
+<section anchor="revoke-mappings"><name>Invalidate Access: Protocol Mappings</name>
 
 <section anchor="revoke-op-invalidate"><name>OpenID Provider Commands: <spanx style="verb">invalidate</spanx> (RECOMMENDED)</name>
 
 <t><strong>Specification:</strong> <xref target="OP-Commands"/></t>
 
-<t>The OP Command type <strong><spanx style="verb">invalidate</spanx></strong> maps to the Invalidate Authentication State lifecycle command, transitioning the session to the <strong>Terminated</strong> state. The <spanx style="verb">invalidate</spanx> command is a <strong>strict superset</strong> of the <spanx style="verb">reestablish</spanx> command. It includes all session invalidation steps plus token invalidation and API key revocation. When the Identity Service sends <spanx style="verb">invalidate</spanx>, it signals that all prior authentication artifacts for the subject must be treated as untrusted.</t>
+<t>The OP Command type <strong><spanx style="verb">invalidate</spanx></strong> maps to the Invalidate Access lifecycle command, transitioning the session to the <strong>Terminated</strong> state. The <spanx style="verb">invalidate</spanx> command is a <strong>strict superset</strong> of the <spanx style="verb">reestablish</spanx> command. It includes all session invalidation steps plus token invalidation and API key revocation. When the Identity Service sends <spanx style="verb">invalidate</spanx>, it signals that all prior authentication artifacts for the subject must be treated as untrusted.</t>
 
 <texttable>
       <ttcol align='left'>Element</ttcol>
@@ -1011,7 +1011,7 @@ The subject's RP client session is terminated and the subject must re-authentica
       <c>RP behavior</c>
       <c>Invalidate RP client session, invalidate all existing access and refresh tokens, revoke all API keys for the subject, require reauthentication</c>
       <c><strong>Completes command?</strong></c>
-      <c><strong>Yes</strong> — fully satisfies Invalidate Authentication State</c>
+      <c><strong>Yes</strong> — fully satisfies Invalidate Access</c>
 </texttable>
 
 <t>See Appendix B for RP implementation steps. See Section 7 for self-contained JWT access token considerations.</t>
@@ -1019,7 +1019,7 @@ The subject's RP client session is terminated and the subject must re-authentica
 </section>
 <section anchor="revoke-protocol-comparison"><name>Protocol Comparison</name>
 
-<t>The following table compares the scope of each protocol when used for the Invalidate Authentication State command.</t>
+<t>The following table compares the scope of each protocol when used for the Invalidate Access command.</t>
 
 <texttable>
       <ttcol align='left'>Protocol</ttcol>
@@ -1134,7 +1134,7 @@ The subject's RP client session is terminated and the subject must re-authentica
 <texttable>
       <ttcol align='left'>Protocol</ttcol>
       <ttcol align='left'>Reestablish Session (SL2)</ttcol>
-      <ttcol align='left'>Invalidate Authentication State (SL2)</ttcol>
+      <ttcol align='left'>Invalidate Access (SL2)</ttcol>
       <c><strong>OP Commands (<spanx style="verb">reestablish</spanx>)</strong></c>
       <c><strong>PROPOSED</strong> — completes command when adopted (see Appendix C)</c>
       <c>Not applicable</c>
@@ -1181,7 +1181,7 @@ The subject's RP client session is terminated and the subject must re-authentica
 - SAML 2.0 SLO (back-channel SOAP binding)</t>
 
 </section>
-<section anchor="rec-revoke"><name>Invalidate Authentication State (SL2 REQUIRED)</name>
+<section anchor="rec-revoke"><name>Invalidate Access (SL2 REQUIRED)</name>
 
 <t><strong>Primary (RECOMMENDED):</strong>
 - OP Commands (<spanx style="verb">invalidate</spanx>): completes the command in a single protocol exchange</t>
@@ -1205,11 +1205,11 @@ The subject's RP client session is terminated and the subject must re-authentica
 </section>
 <section anchor="jwt-tokens"><name>Self-Contained JWT Access Token Considerations</name>
 
-<t>Self-contained JWT access tokens present a unique challenge for "Invalidate Authentication State" because they are validated locally by the Resource Server without contacting the Authorization Server. If the RP cannot invalidate these tokens on demand, the token lifetime becomes the maximum exposure window during which an invalidated token may still be accepted.</t>
+<t>Self-contained JWT access tokens present a unique challenge for "Invalidate Access" because they are validated locally by the Resource Server without contacting the Authorization Server. If the RP cannot invalidate these tokens on demand, the token lifetime becomes the maximum exposure window during which an invalidated token may still be accepted.</t>
 
 <section anchor="jwt-on-demand"><name>On-Demand Invalidation</name>
 
-<t>RPs that can invalidate self-contained access tokens immediately upon receiving an Invalidate Authentication State command (for example, via revocation lists, status lists <xref target="TokenStatusList"/>, or event-driven invalidation (CAEP/SSF)) are not subject to the maximum TTL constraints in Section 7.2.</t>
+<t>RPs that can invalidate self-contained access tokens immediately upon receiving an Invalidate Access command (for example, via revocation lists, status lists <xref target="TokenStatusList"/>, or event-driven invalidation (CAEP/SSF)) are not subject to the maximum TTL constraints in Section 7.2.</t>
 
 <texttable>
       <ttcol align='left'>Strategy</ttcol>
@@ -1244,7 +1244,7 @@ The subject's RP client session is terminated and the subject must re-authentica
 
 <t>The <spanx style="verb">exp</spanx> claim in a self-contained access token <strong>MUST NOT</strong> exceed the maximum TTL for the applicable IPSIE level, measured from the <spanx style="verb">iat</spanx> claim. When the RP operates its own Authorization Server, that Authorization Server <strong>MUST</strong> enforce these limits at token issuance.</t>
 
-<t>For "Invalidate Authentication State," implementers <strong>SHOULD</strong> implement on-demand invalidation (Section 7.1) rather than relying solely on token expiry.</t>
+<t>For "Invalidate Access," implementers <strong>SHOULD</strong> implement on-demand invalidation (Section 7.1) rather than relying solely on token expiry.</t>
 
 </section>
 </section>
@@ -1256,7 +1256,7 @@ The subject's RP client session is terminated and the subject must re-authentica
   <t><strong>Replay protection:</strong> Lifecycle commands <strong>MUST</strong> include a <spanx style="verb">jti</spanx> (JWT ID) claim and an <spanx style="verb">exp</spanx> claim. RPs <strong>SHOULD</strong> reject commands with expired <spanx style="verb">exp</spanx> or duplicate <spanx style="verb">jti</spanx> values within a reasonable window.</t>
   <t><strong>Sender authorization:</strong> RPs <strong>MUST</strong> verify that lifecycle commands originate from a trusted Identity Service (e.g., by validating the <spanx style="verb">iss</spanx> claim against known Identity Service metadata and verifying the signature against the Identity Service's JWKS).</t>
   <t><strong>Command endpoint protection:</strong> RP command endpoints <strong>MUST</strong> be protected against unauthorized access. Endpoints <strong>SHOULD</strong> implement rate limiting to reduce the risk of denial-of-service via command flooding.</t>
-  <t><strong>Fail-secure:</strong> When a command type is unknown or cannot be parsed, RPs <strong>SHOULD</strong> default to the more restrictive behavior (treat as Invalidate Authentication State). Note that this fail-secure behavior could itself be a denial-of-service vector if an attacker can submit malformed commands; RPs <strong>MUST</strong> enforce sender authorization before applying fail-secure defaults.</t>
+  <t><strong>Fail-secure:</strong> When a command type is unknown or cannot be parsed, RPs <strong>SHOULD</strong> default to the more restrictive behavior (treat as Invalidate Access). Note that this fail-secure behavior could itself be a denial-of-service vector if an attacker can submit malformed commands; RPs <strong>MUST</strong> enforce sender authorization before applying fail-secure defaults.</t>
   <t><strong>Enforcement gaps:</strong> Browser-dependent mechanisms (Front-Channel Logout, front-channel SAML SLO) may fail silently if the browser is closed or third-party cookies are blocked. Implementers <strong>SHOULD</strong> prefer back-channel mechanisms for security-critical commands.</t>
 </list></t>
 
@@ -1535,7 +1535,7 @@ IdP --reestablish--> SaaS Application (RP)
 
 <t>All of the user's interactive sessions are expired. First-party clients holding valid access tokens or refresh tokens continue to operate. Background API integrations using API keys are unaffected. The user must complete a full authentication at the IdP, where the IdP re-evaluates policy, risk, and state, to establish a new session.</t>
 
-<t><strong>Invalidate Authentication State:</strong> IdP sends <spanx style="verb">invalidate</spanx>:</t>
+<t><strong>Invalidate Access:</strong> IdP sends <spanx style="verb">invalidate</spanx>:</t>
 
 <figure><artwork type="ascii-art"><![CDATA[
 IdP --invalidate--> SaaS Application (RP)
@@ -1660,7 +1660,7 @@ IdP --invalidate--> SaaS Application (RP)
       <c>Unchanged</c>
       <c>Unchanged</c>
       <c><spanx style="verb">invalidate</spanx></c>
-      <c>Invalidate Authentication State</c>
+      <c>Invalidate Access</c>
       <c>Terminated (superset of reestablish)</c>
       <c>Invalidate all</c>
       <c>Revoke all</c>
@@ -1692,14 +1692,14 @@ IdP --invalidate--> SaaS Application (RP)
       <c>Reestablish Session</c>
       <c><strong>MUST</strong> expire RP session and require reestablishment with Forced Reauthentication</c>
       <c><spanx style="verb">session-revoked</spanx> (reason: <spanx style="verb">policy-violation</spanx>, <spanx style="verb">compromise</spanx>)</c>
-      <c>Invalidate Authentication State</c>
+      <c>Invalidate Access</c>
       <c><strong>MUST</strong> terminate session, invalidate tokens, and revoke API keys</c>
       <c><spanx style="verb">credential-change</spanx> (change type: <spanx style="verb">revoke</spanx>)</c>
-      <c>Invalidate Authentication State</c>
+      <c>Invalidate Access</c>
       <c><strong>MUST</strong> terminate session, invalidate tokens, and revoke API keys</c>
 </texttable>
 
-<t><strong>Note on <spanx style="verb">credential-change</spanx> mapping:</strong> Only <spanx style="verb">credential-change</spanx> events with a change type of <spanx style="verb">revoke</spanx> map to Invalidate Authentication State. Routine credential changes (e.g., password updates or MFA device additions with change type <spanx style="verb">create</spanx> or <spanx style="verb">update</spanx>) do NOT mandate this command; the Identity Service's policy determines whether such events warrant access revalidation.</t>
+<t><strong>Note on <spanx style="verb">credential-change</spanx> mapping:</strong> Only <spanx style="verb">credential-change</spanx> events with a change type of <spanx style="verb">revoke</spanx> map to Invalidate Access. Routine credential changes (e.g., password updates or MFA device additions with change type <spanx style="verb">create</spanx> or <spanx style="verb">update</spanx>) do NOT mandate this command; the Identity Service's policy determines whether such events warrant access revalidation.</t>
 
 </section>
 </section>
@@ -1718,428 +1718,427 @@ IdP --invalidate--> SaaS Application (RP)
   </back>
 
 <!-- ##markdown-source:
-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
-22T2++SAk5i9Jl46P8AlDZBBDxGPLHmBMgVb20EVSDSLf/zu3Fhx61iwPWer
-chK9rnPCiCqGVMBlniqint2b/mN1tz3mfmurdfMMhmjhQGlwNMnhHDOFG629
-UXxdZZL/Y1NaNFh727sv9k5wo/tccMlYai3aepdYTWh64QAYwzLMOac24+oX
-iyyVcnMsxqnB2HplEkz24YRTkC58S6D57LPxLnXYAu9XhJzRl91cN+JyIpQ4
-WVaLss5aGSA2NrqWXJkDkC8opsEKHFLWy4gR1l9J3vZWt9XRutgt00fBIOuB
-Vg20W+KUuK37pUfhRUrcFhGZu8U1hjuTkWuVY7fltzHsj2blvnPJXmsa62BZ
-crpEjJHy8OqGsDvP1jMiPGz5Se6Tn0QUv6fFm1FALEfERrk8GMe9QcjIAn/G
-J6c1OhqPqiFyxcmofOU7X9zdsr6hCwkNBTzA6+t7xGgCYph83XiPPrMUJ4mz
-zmC+NUCAAQ5Duq8GvqroQGTRRA2zUAAJh8GVRpRN5wFzZnxaxp9s0kHrfHJP
-kb43zci5uHXE+G2RhJmXm2i3I3yxHasYhDTa5p2Gs16Ib4wap6iuQ8zV+/JV
-18013welBhEqZihdnJb30Rf3vOmGeqp3rIkcfjvU8AByRxWcI4UFVlfJ767W
-vIoEuors4sqao7xpHFMSpSiW7kcFrG5viwweta5kOVkmXOUC3UDWtv6M+uvw
-gZTxIIv2lO348aSOlU1mu73O0egJiit1zozLKFbj5q25UYfTUlebdttjoudc
-AjSShESBzBd3ixSzbRAllLvtAT1suze6t76QZRCBOEr2uDZbRtU+IiJMbi2l
-U1wkq37qYtoUOit3093Mfklx1IGuOW3djhH3hCkgLQ2daET0OVBAQbOZp6Fv
-u0gYm1R3kUlXaxRDJ+2LtmxGh3sg7hcYeDXJuyLxW9lpncbRpx1Ob58wXdwF
-IZAuiijwjJ915h6Q9NGiKuuyGVqV9jyW6HIlMZ0Bk2tTG2E9YqUDH/fXrsMx
-9/DUughJ3UlJolTjweRF5xNvHLT4JTExWhaYtcJVXrdlTjLYmdCtpL3q1WFO
-newlOf5w9Bfe9ia5EppgekFbr23ymHaLyf3ZiV2f1+0eDiuickyA1JdnXW8A
-iiAx+/FJCdFFb56YvdFSdaT6a5367FF/kLw4fPx1tEe00icw+MaVejKc/q2N
-zmfnNYs7n4lqxVAPnpmh0GS/YWNFJP5e95c0HkuWjZhJYH5ogSFDrYabsRw8
-GsotB16Y2SNKo1u3hjd/ZaxLL1jL5LnFqCUJm7CstrIoNbxWVPbEDzfOrfgK
-aUGpbQ7v58dFKjKKCCkVvToLoskJ2/rTjgo5HvDtkquQTfvJVS7vjBRaU3IL
-4GHsJajzryxRvSvcUGVhiom/k6ha4cGjYJ2B2Lq8rTmRDiczqK6YXkRljotI
-mnerRsJuclGVtzXJ6NSOwyWkYAnsG6BYi4U6N5ejgk4HKinmZUv59cHYIAmr
-CPQjdc2G1cJG4olBkqTC2rs0A5QKlB3yOSDAskaRgqjW+n26TJsg19b01utv
-vfDqGVL4eV2XExOhHloE6qRHxfHcnkUeHUiGTjcA+1svRwYkK7W3DvoSVkF4
-2Q9MlGyvpxyzMQWKSNqkpm12Tax/WBnTnDHaU+2OlPSlMQ7Gl9q4scIA3CrV
-az3R3dbUDWWz1nqbtCS1DVW9PqTUR12CtKiaaJAPXrnSubBK6cVH3ZB3VDNk
-E2oSQH8FMnPoicHm1ps1ycAxxEblg86LKaJVDbRVG/BtUZR3OO/QFvjryx2z
-Xioj2etl0W0kQ6stgG0LAsUs9ih7tNMuA7ERnomdOj5lbWLecwEyxB60Zx/7
-MoTHvY7bM0FrNMqy1UU4NiKbqFcLVCyLOP13Y1Fke5tpPEYL6n7XXbqc1/7a
-Slw6RMFR5gfU+BcmtzFDbjeECDNhbP3PrgKuD2DimgF/xZzLFh/sLuizq8Aa
-hV83C0Ni9WjuZeH8X5Z/BXM5vPaoQbCNrVfdLwbkIXzz+5FhEPiWJRQROD2e
-afz6a7PlH3BA6dd5p4p1k6aLioHllHZD5F27zSobimzbrKh7fKvc1t28f4/r
-sDxoEmXsy40L9O/KTOlaPZqPqium8CzCTbdeWHxajXgrhZb2PViJ/iasinuZ
-G6gNNAQLDtXF/lV7BycMf+kW6vWdAmx9hb0EqZls+J1FLf8wqXmJi6iwxeht
-uJd5B0gsOh8smVzWK9a4Mx6/k3W6FtatFWG1PjSMT0w2AVckU3lPDLJucYYQ
-4+tJMr5lZYUwo3Kz1okzkhEXE2b8r2KiTHueB8gxhCwHjCy98dHLPkouKWjC
-fDAotuD9gG+wUIs1eltX/2LJioFGOq5TJ4UfTD8v32clLJwbEdfJtLyd1yjr
-zNoIQI400hexKBio4AvajlQeQhySN9F91JQL3R7N66ql75MpuXOb5rbtAyOx
-5HBisGRZFOY7hcSM14a/R5R1gabAMTBHhaBJN9L32wCnmBp3eOhPPj1E97YY
-jwJz9X1orPbc1QrHkvPrplnUuzs79eQ6m6X1CMSheT4dzbNmB8QlOuId3NkO
-/Tps7hbZjvEGSImJcw4myMUtkU1KSW11QSgrqrRYP48TzR2nsnAwbhMc7bI0
-5g0OwTTIcd5aF62ZeBy1fNj1ylRwNwnrRHMuI3yci7D/TPZeeO+QxUip7OTi
-h+xZUo15ZrcmWNpk0D0ZdzxuLaIXdy3e9eQcddNz2gCFRcCbs4XsgKqr2SbZ
-gjQGfEpebwFSAvTMLT53DWeGTCnOzaWmWvdtVOVSMB2lY5Zz7lFhwz3XaU3+
-1fG1p9bNmW9q1f7//Bo1Ycb3vusqtE+H/PgVR/Bl5ZojiBKSZueVjdev+U8k
-Bw6SqymC6k5puyqbu78XUSa9nUbuvkHkh9MAdfaryIAiAaYjxzpawJ0lHCYh
-OiTmuvO1Cr68F2wzf6nivVHv6v2qv2D8cxa5fiakQrw753M9dzF1gm95kCV/
-LiJY9NWg623r3XSR/wyIG07o6gpaLN3exnI/5EX1QVGbWnHBFihtJFhb+KrX
-bEQQmwiYF/UzkuHNWsODyrkxDobal1y5osE8EdJSTYnjKrsCeZ1cE53zvHYN
-VVBWkxJ6jaf0aQcQI4Ap53fJHcN5osrFIlsP4Ikj92OgSXhtlCtwWJvPPjN7
-2WvKGXqP79QzqfkMnjnQTXdcPpSNNaLgFHLYkQCItYdG3AQLVinfS6QKZd+S
-oMnNviKqNOwLXW6mfxnWtkJl3jJ5qiZrakoTwbMhJyObhui1Aa/vQH6vyjlm
-BChOSJ41WXzqypIxxdkbc9eURiqYutZv85uyuOESxHj82O8mwewZL7iFQYRW
-hzRsQmYrdE1Ng2UHIgbI8Yk5yTAozb7r7cks3e3tNTrJjBHDzW8O4AZOCOE/
-iAW+CXKL0cLiqQQjp9NywSn9AF244sg6aTEumo+b0AgcOVJFBA9jPBNlwFZ4
-52KIKYGRYiaUGuFWj+RTYZMEd3NQ4UaY5NyskqKINMGgAOMOmY1suWKHDAi6
-5ZxiZEiXd4qPQ40IAsgCpHVmRyk/LwK8weZF8Hg2dUqfNeXMFkAY5xN9T3P3
-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
-Gbf1/wAj9DQnDCsBAA==
+H4sIAAAAAAAAA+V963bbyJngfz0FjvucDSmTVNvdnc7ImeTIsjxRWrY0ojqZ
+/NkWREISYpDgAqDUGss58w4777DvsY8yT7Lfraq+KhRASW1nzsxqMm2JBOr6
+3a/j8XiryZsi202eHZ5MDw+SaVbXeblMjvLLbHY3K7Jkv1ws0uW8fraVXlxU
+2Y15dDw9Grvv5uVsmS5gnHxV59m45mHGhRlmPJNHx0XaZHWzNYN/rsrqDt5Y
+XpZb9fpikdM7zd0Kh1nOs1UG/1k2W/mq2k2W5TLb2krXzXVZ7W4lyRj+P0ku
+10XB8/6QVkXybvZP63y5hMnp27K6Spf5v6YNDLubHMN4h2+St+V6OaeP6Jmq
+xN1n87wpq62tZVkt4LubDKc4fbv/8sWLf5Bff/39t+bX77/+Gn6F349P7BHs
+0mjmMGWuk6q8yedZZQ8xeTH5+hk/mVZXWbObXDfNqt7d2SnhjXw+WWbNTr3K
+ZrV8MF7JEO4AX/z09eS6WRQ0jDsQ/BknfBhvJskf0mreBB//MAlPCA4CPn/5
+9cvvxl//A+3o8M3+ZL+ssuh+9kt4ddYk+MDjtzLjt+HfKnvILt5Pkmn6IV+s
+qzT45o+T5HWVzovsLvji3ST5IwBKHXz8epLMs+RdNs/yqgy/3IdTKasmX8Cy
+/EP5ZvzipT2U1+nsw/51Clsojsqrct30nhA+PZbHE37+6Qd2AYPNeKyHnJt3
+CHYzL/UNv60A0R6+G3r8s23nEkf7bPuZ7r07ehkB2b26zipE8zoBtEFUbMpZ
+WdTJZVklzXWWHO9ND6dA8GbrKm/uEvt88i6tPqxXyVG6vFqnV1kywCmGyZ9e
+dm0YiF89KdM6r8e41QnQnZ1axt2p00WxcwPv0m8M/PDXuKwnq/llz7ank2Q/
+XSJZagH/D9liFXx6OklOrvNiVTYh1h8AfKdFVnnH9zUg/Dfu+OB0LvMiC6iY
++fQ/+chWsoyHHRsczx/WV9cBuNj9vj+cnk2mJ5PffP31+NffjL/1d/wmv8qb
+tEgOkfHgFoFazrMiB+iL72MFu60ny7xuJlflzY4ZdaefOJ9li7K+Lj+0ln40
+Sd7CzMKbLKx/O/76N+3Fv37w2neTPVgKfjwjzkcY4Vj8u3QJ21jA94/bZL3i
+Xy/+Ltvdf8R23wKpr9xWHS142gZnX2SDKPgocWN/7+DE3yKQ3yZfrst1nezN
+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
+tpxOarW+ME61rf8HEJ3IG8AoAQA=
 
 -->
 
