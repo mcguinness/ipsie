@@ -7,7 +7,7 @@
 <title>IPSIE Session Lifecycle Commands</title>
 <meta content="Karl McGuinness" name="author">
 <meta content="
-       This specification defines two lifecycle commands that an Identity Provider (IdP) can send to a Relying Party (RP) to manage federated session lifecycle — requiring the RP to reestablish a session through the IdP or to invalidate all authentication artifacts. 
+       This specification defines two lifecycle commands that an Identity Service can send to a Relying Party (RP) to manage federated session lifecycle:  Reestablish Session  and  Invalidate Authentication State . These commands provide the Identity Service with on-demand control over RP session validity and authentication artifact acceptance, enabling access revalidation and security containment across federated systems. They do not affect authorization policy (roles, permissions, or entitlements) within the RP. 
     " name="description">
 <meta content="xml2rfc 3.31.0" name="generator">
 <meta content="ipsie-session-lifecycle-commands-latest" name="ietf.draft">
@@ -1242,7 +1242,7 @@ li > p:last-of-type:only-child {
 <h1 id="title">IPSIE Session Lifecycle Commands</h1>
 <section id="section-abstract">
       <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
-<p id="section-abstract-1">This specification defines two lifecycle commands that an Identity Provider (IdP) can send to a Relying Party (RP) to manage federated session lifecycle — requiring the RP to reestablish a session through the IdP or to invalidate all authentication artifacts.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-1">This specification defines two lifecycle commands that an Identity Service can send to a Relying Party (RP) to manage federated session lifecycle: <strong>Reestablish Session</strong> and <strong>Invalidate Authentication State</strong>. These commands provide the Identity Service with on-demand control over RP session validity and authentication artifact acceptance, enabling access revalidation and security containment across federated systems. They do not affect authorization policy (roles, permissions, or entitlements) within the RP.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 </section>
 <div id="toc">
 <section id="section-toc.1">
@@ -1254,16 +1254,13 @@ li > p:last-of-type:only-child {
             <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
-                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-idp-control-by-ipsie-level" class="internal xref">IdP Control by IPSIE Level</a></p>
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-ipsie-session-lifecycle-lev" class="internal xref">IPSIE Session Lifecycle Levels</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
-                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-ipsie-session-lifecycle-lev" class="internal xref">IPSIE Session Lifecycle Level Mapping</a></p>
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-notation-and-conventions" class="internal xref">Notation and Conventions</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
-                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-notation-and-conventions" class="internal xref">Notation and Conventions</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.4">
-                <p id="section-toc.1-1.1.2.4.1"><a href="#section-1.4" class="auto internal xref">1.4</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-terminology" class="internal xref">Terminology</a></p>
 </li>
             </ul>
 </li>
@@ -1353,7 +1350,7 @@ li > p:last-of-type:only-child {
                     <p id="section-toc.1-1.4.2.1.2.1.1"><a href="#section-4.1.1" class="auto internal xref">4.1.1</a>.  <a href="#name-rp-requirements" class="internal xref">RP Requirements</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.1.2.2">
-                    <p id="section-toc.1-1.4.2.1.2.2.1"><a href="#section-4.1.2" class="auto internal xref">4.1.2</a>.  <a href="#name-idp-requirements" class="internal xref">IdP Requirements</a></p>
+                    <p id="section-toc.1-1.4.2.1.2.2.1"><a href="#section-4.1.2" class="auto internal xref">4.1.2</a>.  <a href="#name-identity-service-requiremen" class="internal xref">Identity Service Requirements</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.1.2.3">
                     <p id="section-toc.1-1.4.2.1.2.3.1"><a href="#section-4.1.3" class="auto internal xref">4.1.3</a>.  <a href="#name-resulting-state" class="internal xref">Resulting State</a></p>
@@ -1367,7 +1364,7 @@ li > p:last-of-type:only-child {
                     <p id="section-toc.1-1.4.2.2.2.1.1"><a href="#section-4.2.1" class="auto internal xref">4.2.1</a>.  <a href="#name-rp-requirements-2" class="internal xref">RP Requirements</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2.2.2">
-                    <p id="section-toc.1-1.4.2.2.2.2.1"><a href="#section-4.2.2" class="auto internal xref">4.2.2</a>.  <a href="#name-idp-requirements-2" class="internal xref">IdP Requirements</a></p>
+                    <p id="section-toc.1-1.4.2.2.2.2.1"><a href="#section-4.2.2" class="auto internal xref">4.2.2</a>.  <a href="#name-identity-service-requirement" class="internal xref">Identity Service Requirements</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2.2.3">
                     <p id="section-toc.1-1.4.2.2.2.3.1"><a href="#section-4.2.3" class="auto internal xref">4.2.3</a>.  <a href="#name-resulting-state-2" class="internal xref">Resulting State</a></p>
@@ -1408,7 +1405,7 @@ li > p:last-of-type:only-child {
                 <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-completeness-requirement" class="internal xref">Completeness Requirement</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
-                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-reestablish-session-protoco" class="internal xref">Reestablish Session — Protocol Mappings</a></p>
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-reestablish-session-protoco" class="internal xref">Reestablish Session: Protocol Mappings</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2.2.1">
                     <p id="section-toc.1-1.5.2.2.2.1.1"><a href="#section-5.2.1" class="auto internal xref">5.2.1</a>.  <a href="#name-oidc-back-channel-logout-re" class="internal xref">OIDC Back-Channel Logout (RECOMMENDED)</a></p>
@@ -1420,12 +1417,12 @@ li > p:last-of-type:only-child {
                     <p id="section-toc.1-1.5.2.2.2.3.1"><a href="#section-5.2.3" class="auto internal xref">5.2.3</a>.  <a href="#name-saml-20-single-logout-accep" class="internal xref">SAML 2.0 Single Logout (ACCEPTABLE)</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2.2.4">
-                    <p id="section-toc.1-1.5.2.2.2.4.1"><a href="#section-5.2.4" class="auto internal xref">5.2.4</a>.  <a href="#name-openid-provider-commands-re" class="internal xref">OpenID Provider Commands: <code>reestablish</code> (RECOMMENDED)</a></p>
+                    <p id="section-toc.1-1.5.2.2.2.4.1"><a href="#section-5.2.4" class="auto internal xref">5.2.4</a>.  <a href="#name-openid-provider-commands-re" class="internal xref">OpenID Provider Commands: <code>reestablish</code> (PROPOSED)</a></p>
 </li>
                 </ul>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.3">
-                <p id="section-toc.1-1.5.2.3.1"><a href="#section-5.3" class="auto internal xref">5.3</a>.  <a href="#name-invalidate-authentication-sta" class="internal xref">Invalidate Authentication State — Protocol Mappings</a></p>
+                <p id="section-toc.1-1.5.2.3.1"><a href="#section-5.3" class="auto internal xref">5.3</a>.  <a href="#name-invalidate-authentication-sta" class="internal xref">Invalidate Authentication State: Protocol Mappings</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.3.2.1">
                     <p id="section-toc.1-1.5.2.3.2.1.1"><a href="#section-5.3.1" class="auto internal xref">5.3.1</a>.  <a href="#name-openid-provider-commands-in" class="internal xref">OpenID Provider Commands: <code>invalidate</code> (RECOMMENDED)</a></p>
@@ -1491,16 +1488,16 @@ li > p:last-of-type:only-child {
             <p id="section-toc.1-1.11.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-protocol-implementation-det" class="internal xref">Protocol Implementation Details</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
-                <p id="section-toc.1-1.11.2.1.1"><a href="#appendix-B.1" class="auto internal xref">B.1</a>.  <a href="#name-oidc-back-channel-logout-rp" class="internal xref">OIDC Back-Channel Logout — RP Implementation</a></p>
+                <p id="section-toc.1-1.11.2.1.1"><a href="#appendix-B.1" class="auto internal xref">B.1</a>.  <a href="#name-oidc-back-channel-logout-rp" class="internal xref">OIDC Back-Channel Logout: RP Implementation</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
-                <p id="section-toc.1-1.11.2.2.1"><a href="#appendix-B.2" class="auto internal xref">B.2</a>.  <a href="#name-saml-20-single-logout-sp-im" class="internal xref">SAML 2.0 Single Logout — SP Implementation (Back-Channel SOAP)</a></p>
+                <p id="section-toc.1-1.11.2.2.1"><a href="#appendix-B.2" class="auto internal xref">B.2</a>.  <a href="#name-saml-20-single-logout-sp-im" class="internal xref">SAML 2.0 Single Logout: SP Implementation (Back-Channel SOAP)</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
-                <p id="section-toc.1-1.11.2.3.1"><a href="#appendix-B.3" class="auto internal xref">B.3</a>.  <a href="#name-openid-provider-commands-ree" class="internal xref">OpenID Provider Commands: <code>reestablish</code> — RP Implementation</a></p>
+                <p id="section-toc.1-1.11.2.3.1"><a href="#appendix-B.3" class="auto internal xref">B.3</a>.  <a href="#name-openid-provider-commands-ree" class="internal xref">OpenID Provider Commands <code>reestablish</code>: RP Implementation</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.4">
-                <p id="section-toc.1-1.11.2.4.1"><a href="#appendix-B.4" class="auto internal xref">B.4</a>.  <a href="#name-openid-provider-commands-inv" class="internal xref">OpenID Provider Commands: <code>invalidate</code> — RP Implementation</a></p>
+                <p id="section-toc.1-1.11.2.4.1"><a href="#appendix-B.4" class="auto internal xref">B.4</a>.  <a href="#name-openid-provider-commands-inv" class="internal xref">OpenID Provider Commands <code>invalidate</code>: RP Implementation</a></p>
 </li>
             </ul>
 </li>
@@ -1530,8 +1527,9 @@ li > p:last-of-type:only-child {
       <h2 id="name-introduction">
 <a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
       </h2>
-<p id="section-1-1">This specification defines <strong>two lifecycle commands</strong> that an Identity Provider (IdP) can send to a Relying Party (RP) to manage the <strong>federated session lifecycle</strong>.<a href="#section-1-1" class="pilcrow">¶</a></p>
-<p id="section-1-2">These commands affect <strong>session validity and the continued acceptability of prior authentication artifacts</strong>. They do <strong>not</strong> affect roles, permissions, entitlements, or authorization policy within the RP.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-1">In federated single sign-on deployments, an Identity Service authenticates subjects and issues assertions to Relying Parties (RPs). Once a session is established at the RP, the RP operates independently — it may continue accepting that session long after conditions at the Identity Service have changed. This creates a gap: the Identity Service has no reliable way to require the RP to stop relying on a prior authentication and check back before allowing continued access.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">This specification closes that gap by defining <strong>two lifecycle commands</strong> that an Identity Service can send to an RP at any time to control the federated session lifecycle:<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">These commands affect <strong>session validity and the continued acceptability of prior authentication artifacts</strong>. They do <strong>not</strong> affect roles, permissions, entitlements, or authorization policy within the RP.<a href="#section-1-3" class="pilcrow">¶</a></p>
 <table class="center" id="table-1">
         <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
 <thead>
@@ -1560,18 +1558,18 @@ li > p:last-of-type:only-child {
       </table>
 <div id="lifecycle-levels">
 <section id="section-1.1">
-        <h3 id="name-idp-control-by-ipsie-level">
-<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-idp-control-by-ipsie-level" class="section-name selfRef">IdP Control by IPSIE Level</a>
+        <h3 id="name-ipsie-session-lifecycle-lev">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-ipsie-session-lifecycle-lev" class="section-name selfRef">IPSIE Session Lifecycle Levels</a>
         </h3>
-<p id="section-1.1-1">The commands enable progressively greater IdP control over RP sessions. At SL1, the IdP influences session lifetime only through assertion claims — the RP expires sessions when the validity period ends. At SL2, the IdP can send commands at any time to require session reestablishment or full invalidation of authentication artifacts. At SL3, the IdP and RP additionally exchange continuous state signals. The following table summarizes what each level accomplishes:<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-1">The commands enable progressively greater Identity Service control over RP sessions. The following table summarizes what each level requires:<a href="#section-1.1-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-2">
           <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">IPSIE Level</th>
-              <th class="text-left" rowspan="1" colspan="1">Session Termination Model</th>
-              <th class="text-left" rowspan="1" colspan="1">IdP Control</th>
-              <th class="text-left" rowspan="1" colspan="1">Artifact Scope</th>
+              <th class="text-left" rowspan="1" colspan="1">Session Control Model</th>
+              <th class="text-left" rowspan="1" colspan="1">Identity Service Control</th>
+              <th class="text-left" rowspan="1" colspan="1">Commands Required</th>
             </tr>
           </thead>
           <tbody>
@@ -1579,175 +1577,114 @@ li > p:last-of-type:only-child {
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>SL1</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Time-based only — RP expires session when assertion validity period ends or timeout occurs</td>
-              <td class="text-left" rowspan="1" colspan="1">None — IdP sets lifetime via assertion claims (<code>exp</code>, <code>NotOnOrAfter</code>)</td>
-              <td class="text-left" rowspan="1" colspan="1">Sessions only</td>
+              <td class="text-left" rowspan="1" colspan="1">Time-based only. RP expires session when assertion validity period ends or timeout occurs</td>
+              <td class="text-left" rowspan="1" colspan="1">None. Identity Service sets session lifetime via assertion claims (<code>exp</code>, <code>NotOnOrAfter</code>)</td>
+              <td class="text-left" rowspan="1" colspan="1">None</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>SL2</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Time-based + on-demand — IdP can require session reestablishment or full authentication state invalidation at any time</td>
-              <td class="text-left" rowspan="1" colspan="1">Direct — IdP sends Reestablish Session or Invalidate Authentication State commands to RP</td>
-              <td class="text-left" rowspan="1" colspan="1">Sessions, tokens, API keys</td>
+              <td class="text-left" rowspan="1" colspan="1">Time-based and on-demand. Identity Service can require session reestablishment or full authentication state invalidation at any time</td>
+              <td class="text-left" rowspan="1" colspan="1">Direct. Identity Service sends Reestablish Session and Invalidate Authentication State commands to RP</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>Reestablish Session</strong> (REQUIRED), <strong>Invalidate Authentication State</strong> (REQUIRED)</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>SL3</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Time-based + on-demand + continuous — RP and IdP exchange state changes in real time via Shared Signals</td>
-              <td class="text-left" rowspan="1" colspan="1">Continuous — bidirectional communication of session, device, and risk state changes via CAEP/SSF</td>
-              <td class="text-left" rowspan="1" colspan="1">Sessions, tokens, API keys + continuous signals</td>
+              <td class="text-left" rowspan="1" colspan="1">Time-based, on-demand, and continuous. RP and Identity Service exchange state changes in real time via Shared Signals</td>
+              <td class="text-left" rowspan="1" colspan="1">Continuous. Bidirectional communication of session, device, and risk state changes via CAEP/SSF</td>
+              <td class="text-left" rowspan="1" colspan="1">Both SL2 commands (REQUIRED) + continuous access signals</td>
             </tr>
           </tbody>
         </table>
-</section>
-</div>
-<div id="level-mapping">
-<section id="section-1.2">
-        <h3 id="name-ipsie-session-lifecycle-lev">
-<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-ipsie-session-lifecycle-lev" class="section-name selfRef">IPSIE Session Lifecycle Level Mapping</a>
-        </h3>
-<p id="section-1.2-1">The commands defined in this specification map to the <strong>IPSIE Session Lifecycle (SL) levels</strong> as follows:<a href="#section-1.2-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-3">
-          <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
-<thead>
-            <tr>
-              <th class="text-left" rowspan="1" colspan="1">IPSIE Level</th>
-              <th class="text-left" rowspan="1" colspan="1">Command</th>
-              <th class="text-left" rowspan="1" colspan="1">Requirement</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>SL1</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <em>(Not applicable)</em>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Session lifetime set from assertion; RP expires session when validity period ends</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>SL2</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>Reestablish Session</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>REQUIRED</strong> — RP MUST expire sessions on demand at IdP request and reestablish through the IdP, enabling access revalidation</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>SL2</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>Invalidate Authentication State</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>REQUIRED</strong> — RP MUST invalidate sessions and tokens, and revoke API keys at IdP request</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>SL2</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>Self-contained token max TTL</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>1 hour</strong> — when the RP cannot invalidate self-contained access tokens on demand (see Section 7)</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>SL3</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Both commands + continuous access signals</td>
-              <td class="text-left" rowspan="1" colspan="1">RP and IdP MUST communicate session and device state changes</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>SL3</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>Self-contained token max TTL</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>5 minutes</strong> — when the RP cannot invalidate self-contained access tokens on demand (see Section 7)</td>
-            </tr>
-          </tbody>
-        </table>
-<p id="section-1.2-3"><strong>SL2 conformance</strong> requires that:<a href="#section-1.2-3" class="pilcrow">¶</a></p>
+<p id="section-1.1-3"><strong>SL2 conformance</strong> requires that:<a href="#section-1.1-3" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-1.2-4.1">
-            <p id="section-1.2-4.1.1">The <strong>Identity Service</strong> MUST be able to send both Reestablish Session and Invalidate Authentication State commands to Applications<a href="#section-1.2-4.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="section-1.1-4.1">
+            <p id="section-1.1-4.1.1">The <strong>Identity Service</strong> MUST be able to send both Reestablish Session and Invalidate Authentication State commands to the Application<a href="#section-1.1-4.1.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.2-4.2">
-            <p id="section-1.2-4.2.1">The <strong>Application</strong> MUST process and enforce both commands as defined in this specification<a href="#section-1.2-4.2.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.1-4.2">
+            <p id="section-1.1-4.2.1">The <strong>Application</strong> MUST process and enforce both commands as defined in this specification<a href="#section-1.1-4.2.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.2-4.3">
-            <p id="section-1.2-4.3.1">The <strong>Application</strong> MUST NOT accept unsolicited federation assertions (e.g., SAML IdP-initiated SSO)<a href="#section-1.2-4.3.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.1-4.3">
+            <p id="section-1.1-4.3.1">The <strong>Application</strong> MUST NOT accept unsolicited federation assertions (e.g., SAML IdP-initiated SSO)<a href="#section-1.1-4.3.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.2-4.4">
-            <p id="section-1.2-4.4.1">The <strong>Identity Service</strong> MUST enforce authentication method requests from the Application<a href="#section-1.2-4.4.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.1-4.4">
+            <p id="section-1.1-4.4.1">The <strong>Identity Service</strong> MUST enforce authentication method requests from the Application<a href="#section-1.1-4.4.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-1.2-5"><strong>SL3 conformance</strong> builds on SL2 and additionally requires bidirectional state communication via Shared Signals (CAEP), enabling continuous access evaluation.<a href="#section-1.2-5" class="pilcrow">¶</a></p>
+<p id="section-1.1-5"><strong>SL3 conformance</strong> builds on SL2 and additionally requires bidirectional state communication via Shared Signals (CAEP), enabling continuous access evaluation.<a href="#section-1.1-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="notation">
-<section id="section-1.3">
+<section id="section-1.2">
         <h3 id="name-notation-and-conventions">
-<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-notation-and-conventions" class="section-name selfRef">Notation and Conventions</a>
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-notation-and-conventions" class="section-name selfRef">Notation and Conventions</a>
         </h3>
-<p id="section-1.3-1">The key words <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>REQUIRED</strong>, <strong>SHALL</strong>, <strong>SHALL NOT</strong>, <strong>SHOULD</strong>, <strong>SHOULD NOT</strong>, <strong>RECOMMENDED</strong>, <strong>MAY</strong>, and <strong>OPTIONAL</strong> are to be interpreted as described in <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span>.<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+<p id="section-1.2-1">The key words <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>REQUIRED</strong>, <strong>SHALL</strong>, <strong>SHALL NOT</strong>, <strong>SHOULD</strong>, <strong>SHOULD NOT</strong>, <strong>RECOMMENDED</strong>, <strong>MAY</strong>, and <strong>OPTIONAL</strong> are to be interpreted as described in <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span>.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="terminology">
-<section id="section-1.4">
+<section id="section-1.3">
         <h3 id="name-terminology">
-<a href="#section-1.4" class="section-number selfRef">1.4. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-terminology" class="section-name selfRef">Terminology</a>
         </h3>
-<p id="section-1.4-1"><strong>Authentication</strong>
-The process of verifying the identity of a subject (user, device, or workload). <span>[<a href="#NIST.SP.800-63-3" class="cite xref">NIST.SP.800-63-3</a>]</span> §4<a href="#section-1.4-1" class="pilcrow">¶</a></p>
-<p id="section-1.4-2"><strong>Authentication State</strong>
-The collection of artifacts that together represent the outcome of a successful authentication event and allow a subject to continue accessing resources without reauthenticating. Authentication state includes the RP client session, access tokens, refresh tokens, and API keys that were established or issued as a result of the subject's authentication. Authentication state is scoped to a subject at a specific RP and is distinct from authorization state (roles, permissions, entitlements). In this specification, the Invalidate Authentication State command requires the RP to treat all of these artifacts as no longer valid. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7 (session management), <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §6 (assertion lifetime and protection), <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.4, §1.5 (token lifecycle)<a href="#section-1.4-2" class="pilcrow">¶</a></p>
-<p id="section-1.4-3"><strong>Authorization</strong>
-The process of determining what actions or resources an authenticated subject is permitted to access. Authorization is distinct from authentication and is not affected by the commands defined in this specification. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.1<a href="#section-1.4-3" class="pilcrow">¶</a></p>
-<p id="section-1.4-4"><strong>Access Token</strong>
-A credential issued by an Authorization Server that represents the authorization granted to a client to access protected resources at a Resource Server. Access tokens have a limited lifetime and may be self-contained (e.g., JWT) or reference-based. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.4<a href="#section-1.4-4" class="pilcrow">¶</a></p>
-<p id="section-1.4-5"><strong>API Key</strong>
-A long-lived, static credential issued by the RP (not the Authorization Server) that grants API access to the RP's resources on behalf of a subject. API keys include service keys, personal access tokens (PATs), and static bearer tokens. Unlike OAuth tokens, API keys are typically not bound to an OAuth grant, are not rotated via refresh tokens, and may have no expiration. API keys are authentication artifacts and are within the scope of the Invalidate Authentication State command.<a href="#section-1.4-5" class="pilcrow">¶</a></p>
-<p id="section-1.4-6"><strong>Assertion</strong>
-A statement from an Identity Provider to a Relying Party that conveys information about an authentication event and the authenticated subject. In OIDC, the ID Token serves as the assertion; in SAML, the <code>&lt;Assertion&gt;</code> element. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §4, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.3<a href="#section-1.4-6" class="pilcrow">¶</a></p>
-<p id="section-1.4-7"><strong>Authorization Server (AS)</strong>
-The server that issues access tokens and refresh tokens to a client after successfully authenticating the resource owner and obtaining authorization. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.1<a href="#section-1.4-7" class="pilcrow">¶</a></p>
-<p id="section-1.4-8"><strong>Expire</strong>
-To end the validity of an artifact (session, token, assertion) so that it is no longer accepted. Expiration may occur naturally when a time-based validity period ends (e.g., an assertion's <code>exp</code> claim at SL1). Expiration is a normal lifecycle event, not an indication of a security incident. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.5, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.3.7 (<code>exp</code> claim)<a href="#section-1.4-8" class="pilcrow">¶</a></p>
-<p id="section-1.4-9"><strong>Identity Provider (IdP)</strong>
-The entity that authenticates subjects and issues assertions to Relying Parties. Also referred to as OpenID Provider (OP) in OIDC and Identity Provider (IdP) in SAML. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.2<a href="#section-1.4-9" class="pilcrow">¶</a></p>
-<p id="section-1.4-10"><strong>Forced Reauthentication</strong>
-An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new <code>auth_time</code>, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Authentication State commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-1.4-10" class="pilcrow">¶</a></p>
-<p id="section-1.4-11"><strong>Session Continuation</strong>
-An authentication intent in which the RP requests authentication and the IdP determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements. No new authentication event occurs — the IdP reuses the existing session and its authentication context (<code>auth_time</code>, <code>acr</code>, <code>amr</code>). Session Continuation is the normal flow when the RP needs to reestablish local application state (e.g., after local session expiry, cookie loss, or RP-local logout) without requiring fresh authentication. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3<a href="#section-1.4-11" class="pilcrow">¶</a></p>
-<p id="section-1.4-12"><strong>Step-Up Authentication</strong>
-An authentication intent in which the RP requires a higher level of assurance than is provided by the existing authentication session. The IdP evaluates whether the current authentication context satisfies the requested assurance and, if insufficient, requires additional authentication. The resulting authentication context reflects the updated assurance, including updated <code>acr</code>, <code>amr</code>, and <code>auth_time</code> as appropriate. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-1.4-12" class="pilcrow">¶</a></p>
-<p id="section-1.4-13"><strong>Refresh Token</strong>
-A credential issued by an Authorization Server that a client uses to obtain new access tokens without requiring the resource owner to reauthenticate. Refresh tokens are typically long-lived and revocable. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.5<a href="#section-1.4-13" class="pilcrow">¶</a></p>
-<p id="section-1.4-14"><strong>Relying Party (RP)</strong>
-The application or service that depends on the Identity Provider for authentication of subjects. Also referred to as Service Provider (SP) in SAML or Client in OAuth. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.2, <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §4<a href="#section-1.4-14" class="pilcrow">¶</a></p>
-<p id="section-1.4-15"><strong>Resource Server (RS)</strong>
-The server hosting protected resources, capable of accepting and responding to requests using access tokens. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.1<a href="#section-1.4-15" class="pilcrow">¶</a></p>
-<p id="section-1.4-16"><strong>Invalidate</strong>
-To render an artifact (token, session, API key, or authentication state) no longer valid or trustworthy, regardless of its remaining lifetime. Invalidation is an active security operation, typically in response to a security event. In this specification, "Invalidate Authentication State" denotes the IdP-initiated command to invalidate all prior authentication artifacts for a subject. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-1.4-16" class="pilcrow">¶</a></p>
-<p id="section-1.4-17"><strong>Revoke / Revocation</strong>
-The act of explicitly canceling a specific credential or token before its natural expiration, rendering it permanently unusable. Revocation is a specific form of invalidation applied to individual artifacts. <span>[<a href="#RFC7009" class="cite xref">RFC7009</a>]</span> §1<a href="#section-1.4-17" class="pilcrow">¶</a></p>
-<p id="section-1.4-18"><strong>Session</strong>
-A temporary, stateful security context that is established after a successful authentication event and allows a subject to continue accessing a system without reauthenticating for each request. Sessions are time-limited, context-bound, and revocable. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §15.5.1<a href="#section-1.4-18" class="pilcrow">¶</a></p>
-<p id="section-1.4-19"><strong>Single Sign-On (SSO)</strong>
-A mechanism that allows a subject to authenticate once at an Identity Provider and subsequently access multiple Relying Parties without reauthenticating at each one, for the duration of the IdP session. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3<a href="#section-1.4-19" class="pilcrow">¶</a></p>
-<p id="section-1.4-20"><strong>Subject</strong>
-The entity (user, device, or workload) whose identity is asserted by the Identity Provider. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §2 (<code>sub</code> claim), <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.4<a href="#section-1.4-20" class="pilcrow">¶</a></p>
+<p id="section-1.3-1"><strong>Authentication</strong>
+The process of verifying the identity of a subject (user, device, or workload). <span>[<a href="#NIST.SP.800-63-4" class="cite xref">NIST.SP.800-63-4</a>]</span> §4<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+<p id="section-1.3-2"><strong>Authentication State</strong>
+The collection of artifacts that together represent the outcome of a successful authentication event and allow a subject to continue accessing resources without reauthenticating. Authentication state includes the RP client session, access tokens, refresh tokens, and API keys that were established or issued as a result of the subject's authentication. Authentication state is scoped to a subject at a specific RP and is distinct from authorization state (roles, permissions, entitlements). In this specification, the Invalidate Authentication State command requires the RP to treat all of these artifacts as no longer valid. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7 (session management), <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §6 (assertion lifetime and protection), <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.4, §1.5 (token lifecycle)<a href="#section-1.3-2" class="pilcrow">¶</a></p>
+<p id="section-1.3-3"><strong>Authorization</strong>
+The process of determining what actions or resources an authenticated subject is permitted to access. Authorization is distinct from authentication and is not affected by the commands defined in this specification. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.1<a href="#section-1.3-3" class="pilcrow">¶</a></p>
+<p id="section-1.3-4"><strong>Access Token</strong>
+A credential issued by an Authorization Server that represents the authorization granted to a client to access protected resources at a Resource Server. Access tokens have a limited lifetime and may be self-contained (e.g., JWT) or reference-based. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.4<a href="#section-1.3-4" class="pilcrow">¶</a></p>
+<p id="section-1.3-5"><strong>API Key</strong>
+A long-lived, static credential issued by the RP (not the Authorization Server) that grants API access to the RP's resources on behalf of a subject. API keys include service keys, personal access tokens (PATs), and static bearer tokens. Unlike OAuth tokens, API keys are typically not bound to an OAuth grant, are not rotated via refresh tokens, and may have no expiration. API keys are authentication artifacts and are within the scope of the Invalidate Authentication State command.<a href="#section-1.3-5" class="pilcrow">¶</a></p>
+<p id="section-1.3-6"><strong>Assertion</strong>
+A statement from an Identity Provider to a Relying Party that conveys information about an authentication event and the authenticated subject. In OIDC, the ID Token serves as the assertion; in SAML, the <code>&lt;Assertion&gt;</code> element. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §4, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.3<a href="#section-1.3-6" class="pilcrow">¶</a></p>
+<p id="section-1.3-7"><strong>Authorization Server (AS)</strong>
+The server that issues access tokens and refresh tokens to a client after successfully authenticating the resource owner and obtaining authorization. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.1<a href="#section-1.3-7" class="pilcrow">¶</a></p>
+<p id="section-1.3-8"><strong>Expire</strong>
+To end the validity of an artifact (session, token, assertion) so that it is no longer accepted. Expiration may occur naturally when a time-based validity period ends (e.g., an assertion's <code>exp</code> claim at SL1). Expiration is a normal lifecycle event, not an indication of a security incident. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.5, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.3.7 (<code>exp</code> claim)<a href="#section-1.3-8" class="pilcrow">¶</a></p>
+<p id="section-1.3-9"><strong>Identity Provider (IdP)</strong>
+The entity that authenticates subjects and issues assertions to Relying Parties. Also referred to as OpenID Provider (OP) in OIDC and Identity Provider (IdP) in SAML. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.2<a href="#section-1.3-9" class="pilcrow">¶</a></p>
+<p id="section-1.3-10"><strong>Forced Reauthentication</strong>
+An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new <code>auth_time</code>, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Authentication State commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-1.3-10" class="pilcrow">¶</a></p>
+<p id="section-1.3-11"><strong>Session Continuation</strong>
+An authentication intent in which the RP requests authentication and the IdP determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements. No new authentication event occurs. The IdP reuses the existing session and its authentication context (<code>auth_time</code>, <code>acr</code>, <code>amr</code>). Session Continuation is the normal flow when the RP needs to reestablish local application state (e.g., after local session expiry, cookie loss, or RP-local logout) without requiring fresh authentication. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3<a href="#section-1.3-11" class="pilcrow">¶</a></p>
+<p id="section-1.3-12"><strong>Step-Up Authentication</strong>
+An authentication intent in which the RP requires a higher level of assurance than is provided by the existing authentication session. The IdP evaluates whether the current authentication context satisfies the requested assurance and, if insufficient, requires additional authentication. The resulting authentication context reflects the updated assurance, including updated <code>acr</code>, <code>amr</code>, and <code>auth_time</code> as appropriate. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-1.3-12" class="pilcrow">¶</a></p>
+<p id="section-1.3-13"><strong>Refresh Token</strong>
+A credential issued by an Authorization Server that a client uses to obtain new access tokens without requiring the resource owner to reauthenticate. Refresh tokens are typically long-lived and revocable. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.5<a href="#section-1.3-13" class="pilcrow">¶</a></p>
+<p id="section-1.3-14"><strong>Relying Party (RP)</strong>
+The application or service that depends on the Identity Provider for authentication of subjects. Also referred to as Service Provider (SP) in SAML or Client in OAuth. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.2, <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §4<a href="#section-1.3-14" class="pilcrow">¶</a></p>
+<p id="section-1.3-15"><strong>Resource Server (RS)</strong>
+The server hosting protected resources, capable of accepting and responding to requests using access tokens. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.1<a href="#section-1.3-15" class="pilcrow">¶</a></p>
+<p id="section-1.3-16"><strong>Invalidate</strong>
+To render an artifact (token, session, API key, or authentication state) no longer valid or trustworthy, regardless of its remaining lifetime. Invalidation is an active security operation, typically in response to a security event. In this specification, "Invalidate Authentication State" denotes the Identity Service-initiated command to invalidate all prior authentication artifacts for a subject. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-1.3-16" class="pilcrow">¶</a></p>
+<p id="section-1.3-17"><strong>Logout</strong>
+An explicit action that terminates a subject's authenticated session at the RP, transitions the session to the <strong>Terminated</strong> state, and requires <strong>Forced Reauthentication</strong> before the subject can regain interactive access. Logout is distinct from time-based session expiry (which may allow Session Continuation) and from the Reestablish Session command (which marks the session Invalid without terminating it). Common forms include:<a href="#section-1.3-17" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1.3-18.1">
+            <p id="section-1.3-18.1.1"><strong>User-Initiated Logout:</strong> The subject explicitly requests to end their session (e.g., by clicking "Sign Out"). The RP session is terminated. OAuth access tokens, refresh tokens, and API keys are typically preserved, as the subject may have active background processes. The IdP SSO session MAY be terminated depending on whether the logout is propagated to the Identity Service via OIDC Logout or SAML SLO.<a href="#section-1.3-18.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.3-18.2">
+            <p id="section-1.3-18.2.1"><strong>Admin-Initiated Logout:</strong> An administrator explicitly terminates the subject's session via a management portal or administrative action. The RP session is terminated. OAuth tokens and API keys MAY be preserved or revoked depending on administrative policy. The IdP SSO session SHOULD be terminated.<a href="#section-1.3-18.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-1.3-18.3">
+            <p id="section-1.3-18.3.1"><strong>Policy or System-Initiated Logout:</strong> The Identity Service or RP terminates a session based on automated policy (e.g., idle timeout enforcement, compliance policy, device posture failure) rather than a direct user or admin action. Artifact scope depends on the policy that triggered the logout.<a href="#section-1.3-18.3.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-1.3-19">In all cases, the subject must re-authenticate through the Identity Service before regaining interactive access. This re-authentication gives the Identity Service an opportunity to re-evaluate policy, risk, and account state before issuing a new assertion, the same access-revalidation opportunity provided by the Reestablish Session command. See Section 5.2 for how Logout protocols (OIDC Back-Channel Logout, OIDC Front-Channel Logout, SAML SLO) satisfy the Reestablish Session command contract.<a href="#section-1.3-19" class="pilcrow">¶</a></p>
+<p id="section-1.3-20"><strong>Revoke / Revocation</strong>
+The act of explicitly canceling a specific credential or token before its natural expiration, rendering it permanently unusable. Revocation is a specific form of invalidation applied to individual artifacts. <span>[<a href="#RFC7009" class="cite xref">RFC7009</a>]</span> §1<a href="#section-1.3-20" class="pilcrow">¶</a></p>
+<p id="section-1.3-21"><strong>Session</strong>
+A temporary, stateful security context that is established after a successful authentication event and allows a subject to continue accessing a system without reauthenticating for each request. Sessions are time-limited, context-bound, and revocable. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §15.5.1<a href="#section-1.3-21" class="pilcrow">¶</a></p>
+<p id="section-1.3-22"><strong>Single Sign-On (SSO)</strong>
+A mechanism that allows a subject to authenticate once at an Identity Provider and subsequently access multiple Relying Parties without reauthenticating at each one, for the duration of the IdP session. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3<a href="#section-1.3-22" class="pilcrow">¶</a></p>
+<p id="section-1.3-23"><strong>Subject</strong>
+The entity (user, device, or workload) whose identity is asserted by the Identity Provider. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §2 (<code>sub</code> claim), <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.4<a href="#section-1.3-23" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1757,9 +1694,9 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
       <h2 id="name-federated-session-lifecycle">
 <a href="#section-2" class="section-number selfRef">2. </a><a href="#name-federated-session-lifecycle" class="section-name selfRef">Federated Session Lifecycle</a>
       </h2>
-<p id="section-2-1">The Reestablish Session and Invalidate Authentication State commands affect RP session and authentication state in distinct ways — one expires sessions while preserving tokens, the other invalidates all artifacts. This section defines a <strong>logical model</strong> for the lifecycle of a federated authentication session at the Relying Party, providing a framework for understanding how each command transitions the subject's state. The model describes the states and transitions of <strong>RP session and authentication-artifact state</strong> — it does not model RP subscriber account lifecycle (e.g., provisioning, disabling, or deleting accounts), which is addressed separately by the IPSIE Account Lifecycle (AL) levels.<a href="#section-2-1" class="pilcrow">¶</a></p>
-<p id="section-2-2">This model is <strong>informational</strong> — RPs are not required to implement these states or transitions internally. The normative requirements for RPs are defined by the lifecycle commands in Section 4. The model provides a shared vocabulary for reasoning about session state and the expected behavior of each command.<a href="#section-2-2" class="pilcrow">¶</a></p>
-<p id="section-2-3">The IdP and RP manage sessions independently of each other — the federation protocol does not bind IdP session state to RP session state. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3. This model describes the RP-side view of the federated session.<a href="#section-2-3" class="pilcrow">¶</a></p>
+<p id="section-2-1">The Reestablish Session and Invalidate Authentication State commands, together with Logout, affect RP session and authentication state in distinct ways. Logout terminates the session while preserving tokens. Reestablish Session marks the session Invalid while preserving tokens. Invalidate Authentication State terminates the session and invalidates all artifacts. This section defines a <strong>logical model</strong> for the lifecycle of a federated authentication session at the Relying Party. The model provides a framework for understanding how each command transitions the subject's state. It describes the states and transitions of <strong>RP session and authentication-artifact state</strong>. It does not model RP subscriber account lifecycle (e.g., provisioning, disabling, or deleting accounts), which is addressed separately by the IPSIE Account Lifecycle (AL) levels.<a href="#section-2-1" class="pilcrow">¶</a></p>
+<p id="section-2-2">This model is <strong>informational</strong>. RPs are not required to implement these states or transitions internally. The normative requirements for RPs are defined by the lifecycle commands in Section 4. The model provides a shared vocabulary for reasoning about session state and the expected behavior of each command.<a href="#section-2-2" class="pilcrow">¶</a></p>
+<p id="section-2-3">The IdP and RP manage sessions independently of each other. The federation protocol does not bind IdP session state to RP session state. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3. This model describes the RP-side view of the federated session.<a href="#section-2-3" class="pilcrow">¶</a></p>
 <div id="session-state-diagram">
 <section id="section-2.1">
         <h3 id="name-session-state-diagram">
@@ -1784,28 +1721,26 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
          |          +-------------------+                        |
          |          |      Active       |                        |
          |          +-------------------+                        |
-         |           |    |       |    \                         |
-         |           |    |       |     (user logout)            |
-         |           |    |       |         \                    |
-         |           v    v       v          v                   |
-         |  +---------+ +-----------+ +------------+          |
-         |  | Expired | | Suspended | | Terminated |          |
-         |  +---------+ +-----------+ +------------+          |
-         |       |             |               |                 |
-         +-------+-------------+               +-----------------+
+         |            |       |       |                          |
+         |            v       v       v                          |
+         |  +---------+ +---------+ +------------+             |
+         |  | Expired | | Invalid | | Terminated |             |
+         |  +---------+ +---------+ +------------+             |
+         |       |             |               |                  |
+         +-------+-------------+               +------------------+
        (subject returns                   (subject returns
         to Establish)                      to Unauthenticated)
 </pre><a href="#section-2.1-1" class="pilcrow">¶</a>
 </div>
-<p id="section-2.1-2">The lifecycle defines three progressive levels of IdP control over RP sessions, plus user-initiated logout:<a href="#section-2.1-2" class="pilcrow">¶</a></p>
-<table class="center" id="table-4">
-          <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
+<p id="section-2.1-2">The lifecycle defines four progressive levels of Identity Service control over RP sessions:<a href="#section-2.1-2" class="pilcrow">¶</a></p>
+<table class="center" id="table-3">
+          <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Level</th>
               <th class="text-left" rowspan="1" colspan="1">State</th>
               <th class="text-left" rowspan="1" colspan="1">Trigger</th>
-              <th class="text-left" rowspan="1" colspan="1">IdP Intent</th>
+              <th class="text-left" rowspan="1" colspan="1">Intent</th>
               <th class="text-left" rowspan="1" colspan="1">Tokens &amp; API Keys</th>
             </tr>
           </thead>
@@ -1823,34 +1758,36 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>2. Suspend</strong>
+                <strong>2. Logout</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>Suspended</strong>
+                <strong>Terminated</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Reestablish Session command</td>
-              <td class="text-left" rowspan="1" colspan="1">"Get a fresh session — full re-evaluation required"</td>
+              <td class="text-left" rowspan="1" colspan="1">Logout (user, admin, policy, or system-initiated)</td>
+              <td class="text-left" rowspan="1" colspan="1">Session ended; re-authentication required</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>3. Terminate</strong>
+                <strong>3. Suspend</strong>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>Invalid</strong>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">Reestablish Session command</td>
+              <td class="text-left" rowspan="1" colspan="1">"Get a fresh session; full re-evaluation required"</td>
+              <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>4. Terminate</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Terminated</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Invalidate Authentication State command</td>
-              <td class="text-left" rowspan="1" colspan="1">"Kill everything — security event"</td>
+              <td class="text-left" rowspan="1" colspan="1">"Kill everything; security event"</td>
               <td class="text-left" rowspan="1" colspan="1">Invalidated / revoked</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">—</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>Unauthenticated</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">User-initiated logout</td>
-              <td class="text-left" rowspan="1" colspan="1">Subject clears RP state</td>
-              <td class="text-left" rowspan="1" colspan="1">RP session cleared</td>
             </tr>
           </tbody>
         </table>
@@ -1862,27 +1799,36 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
 <a href="#section-2.2" class="section-number selfRef">2.2. </a><a href="#name-state-descriptions" class="section-name selfRef">State Descriptions</a>
         </h3>
 <p id="section-2.2-1"><strong>Unauthenticated:</strong>
-No session exists for the subject at the RP. The subject has not yet authenticated, all prior authentication state has been terminated, or the subject has logged out. This is the initial state, the return state after termination, and the return state after user-initiated logout. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-1" class="pilcrow">¶</a></p>
+No session exists for the subject at the RP. The subject has not yet authenticated or all prior authentication state has been terminated. This is the initial state and the return state after Terminated. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-1" class="pilcrow">¶</a></p>
 <p id="section-2.2-2"><strong>Establish:</strong>
-The RP has initiated a federation transaction. The subject is redirected to the IdP for authentication. The authentication intent — Session Continuation, Step-Up Authentication, or Forced Reauthentication — depends on how the subject arrived at this state (see Section 3.6). The IdP authenticates the subject (or satisfies the request from an existing session when the authentication intent permits), issues an assertion — an OIDC ID Token or SAML <code>&lt;Assertion&gt;</code> — and delivers it to the RP. The RP validates the assertion (signature, issuer, audience, freshness), establishes a local RP client session bound to the assertion, and MAY issue OAuth access tokens and refresh tokens to first-party clients. The subject MAY create API keys. These artifacts collectively form the subject's <strong>authentication state</strong> at the RP. If any validation step fails, the subject remains Unauthenticated. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5–6, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §3.4, <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-2" class="pilcrow">¶</a></p>
+The RP has initiated a federation transaction. The subject is redirected to the IdP for authentication. The authentication intent (Session Continuation, Step-Up Authentication, or Forced Reauthentication) depends on how the subject arrived at this state (see Section 3.6). The IdP authenticates the subject (or satisfies the request from an existing session when the authentication intent permits), issues an assertion (an OIDC ID Token or SAML <code>&lt;Assertion&gt;</code>), and delivers it to the RP. The RP validates the assertion (signature, issuer, audience, freshness), establishes a local RP client session bound to the assertion, and MAY issue OAuth access tokens and refresh tokens to first-party clients. The subject MAY create API keys. These artifacts collectively form the subject's <strong>authentication state</strong> at the RP. If any validation step fails, the subject remains Unauthenticated. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5–6, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §3.4, <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-2" class="pilcrow">¶</a></p>
 <p id="section-2.2-3"><strong>Active:</strong>
 The subject has an established session and is accessing RP resources using the session, tokens, and API keys. The RP enforces session validity, token lifetime, and authorization policy. Token refresh operations extend API access without requiring reauthentication. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-2.2-3" class="pilcrow">¶</a></p>
 <p id="section-2.2-4"><strong>Expired:</strong>
 The subject's RP client sessions are no longer valid due to time-based expiry. Expiry may be triggered by:<a href="#section-2.2-4" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-2.2-5.1">
-            <p id="section-2.2-5.1.1"><strong>Inactivity timeout</strong> — no subscriber activity within the configured timeout period <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-2.2-5.1.1" class="pilcrow">¶</a></p>
+            <p id="section-2.2-5.1.1"><strong>Inactivity timeout:</strong> No subscriber activity within the configured timeout period <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-2.2-5.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-2.2-5.2">
-            <p id="section-2.2-5.2.1"><strong>Absolute timeout</strong> — maximum session duration reached regardless of activity <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-2.2-5.2.1" class="pilcrow">¶</a></p>
+            <p id="section-2.2-5.2.1"><strong>Absolute timeout:</strong> Maximum session duration reached regardless of activity <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-2.2-5.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 <p id="section-2.2-6">Tokens and API keys remain valid. The subject returns to the Establish state, where the IdP may satisfy the request via <strong>Session Continuation</strong> (reusing the existing IdP session) or <strong>Step-Up Authentication</strong> if the IdP's policy requires it. <strong>Forced Reauthentication</strong> may also be used but is not required. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.3.7<a href="#section-2.2-6" class="pilcrow">¶</a></p>
-<p id="section-2.2-7"><strong>Suspended:</strong>
-The subject's RP client sessions are suspended — expired but with tokens and API keys remaining valid. Unlike the Expired state, the subject MUST return to the Establish state via <strong>Forced Reauthentication</strong> — Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 4.3 for Forced Reauthentication requirements.<a href="#section-2.2-7" class="pilcrow">¶</a></p>
-<p id="section-2.2-8">A session may be suspended by the <strong>Reestablish Session</strong> command from the IdP, or by RP-specific mechanisms such as account lockout, account recovery, administrative action, or risk-based policy enforcement. This specification defines the IdP-initiated trigger; RP-specific triggers are outside the scope of this specification but produce the same logical state.<a href="#section-2.2-8" class="pilcrow">¶</a></p>
+<p id="section-2.2-7"><strong>Invalid:</strong>
+The subject's RP client sessions are no longer accepted. Tokens and API keys remain valid. The subject MUST return to the Establish state via <strong>Forced Reauthentication</strong>. Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 3.3 for Forced Reauthentication requirements.<a href="#section-2.2-7" class="pilcrow">¶</a></p>
+<p id="section-2.2-8">A session may be marked Invalid by the <strong>Reestablish Session</strong> command from the Identity Service, or by RP-specific mechanisms such as account lockout, account recovery, administrative action, or risk-based policy enforcement. This specification defines the Identity Service-initiated trigger; RP-specific triggers are outside the scope of this specification but produce the same logical state.<a href="#section-2.2-8" class="pilcrow">¶</a></p>
 <p id="section-2.2-9"><strong>Terminated:</strong>
-All authentication artifacts — sessions, tokens, and API keys — have been invalidated or revoked via the <strong>Invalidate Authentication State</strong> command (SL2). This is the most severe level of IdP control, indicating a security event where prior authentication artifacts should no longer be trusted. The subject returns to the Unauthenticated state and must proceed through Establish via <strong>Forced Reauthentication</strong>. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-9" class="pilcrow">¶</a></p>
+The subject's RP client session is terminated and the subject must re-authenticate through the Identity Service before regaining interactive access. This state is reached via two distinct triggers with different artifact scopes:<a href="#section-2.2-9" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-2.2-10.1">
+            <p id="section-2.2-10.1.1"><strong>Logout</strong> (user, admin, policy, or system-initiated): The RP session is terminated. Tokens and API keys are typically preserved, as the subject may have active background processes. The Identity Service is given an opportunity to re-evaluate policy, risk, and account state before issuing a new assertion. See Section 2 for the definition of Logout.<a href="#section-2.2-10.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-2.2-10.2">
+            <p id="section-2.2-10.2.1"><strong>Invalidate Authentication State</strong> command (SL2): The most severe level of Identity Service control, indicating a security event. All authentication artifacts (sessions, tokens, and API keys) are invalidated or revoked. Prior authentication artifacts MUST NOT be trusted.<a href="#section-2.2-10.2.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-2.2-11">In both cases the subject returns to the Unauthenticated state and must proceed through Establish via <strong>Forced Reauthentication</strong>. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-11" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="session-transitions">
@@ -1890,8 +1836,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         <h3 id="name-session-state-transitions">
 <a href="#section-2.3" class="section-number selfRef">2.3. </a><a href="#name-session-state-transitions" class="section-name selfRef">Session State Transitions</a>
         </h3>
-<table class="center" id="table-5">
-          <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
+<table class="center" id="table-4">
+          <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">From</th>
@@ -1927,23 +1873,23 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Active</td>
-              <td class="text-left" rowspan="1" colspan="1">Suspended</td>
+              <td class="text-left" rowspan="1" colspan="1">Invalid</td>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Reestablish Session</strong> command</td>
-              <td class="text-left" rowspan="1" colspan="1">IdP-initiated access revalidation (SL2)</td>
+              <td class="text-left" rowspan="1" colspan="1">Identity Service-initiated access revalidation (SL2)</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">Active</td>
+              <td class="text-left" rowspan="1" colspan="1">Terminated</td>
+              <td class="text-left" rowspan="1" colspan="1">Logout (user, admin, policy, or system-initiated)</td>
+              <td class="text-left" rowspan="1" colspan="1">Subject cannot resume session; Forced Reauthentication required</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Active</td>
               <td class="text-left" rowspan="1" colspan="1">Terminated</td>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Invalidate Authentication State</strong> command</td>
-              <td class="text-left" rowspan="1" colspan="1">IdP-initiated security operation (SL2)</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Active</td>
-              <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
-              <td class="text-left" rowspan="1" colspan="1">User-initiated logout</td>
-              <td class="text-left" rowspan="1" colspan="1">Subject clears RP session state</td>
+              <td class="text-left" rowspan="1" colspan="1">Identity Service-initiated security operation; all artifacts invalidated (SL2)</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Expired</td>
@@ -1952,7 +1898,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <td class="text-left" rowspan="1" colspan="1">Session Continuation, Step-Up, or Forced Reauthentication</td>
             </tr>
             <tr>
-              <td class="text-left" rowspan="1" colspan="1">Suspended</td>
+              <td class="text-left" rowspan="1" colspan="1">Invalid</td>
               <td class="text-left" rowspan="1" colspan="1">Establish</td>
               <td class="text-left" rowspan="1" colspan="1">Subject requests access</td>
               <td class="text-left" rowspan="1" colspan="1">Forced Reauthentication ONLY</td>
@@ -1961,15 +1907,9 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <td class="text-left" rowspan="1" colspan="1">Terminated</td>
               <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
               <td class="text-left" rowspan="1" colspan="1">
-                <em>(immediate)</em>
+                <em>(immediate — all artifacts invalidated)</em>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">All artifacts invalidated; must start fresh</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
-              <td class="text-left" rowspan="1" colspan="1">Establish</td>
-              <td class="text-left" rowspan="1" colspan="1">Subject requests access</td>
-              <td class="text-left" rowspan="1" colspan="1">New federation transaction</td>
+              <td class="text-left" rowspan="1" colspan="1">Subject must start fresh via Unauthenticated</td>
             </tr>
           </tbody>
         </table>
@@ -1980,38 +1920,51 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         <h3 id="name-progressive-idp-control">
 <a href="#section-2.4" class="section-number selfRef">2.4. </a><a href="#name-progressive-idp-control" class="section-name selfRef">Progressive IdP Control</a>
         </h3>
-<p id="section-2.4-1">The three terminal states — Expired, Suspended, and Terminated — represent a <strong>progressive escalation</strong> of IdP control over the RP session:<a href="#section-2.4-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-6">
-          <caption><a href="#table-6" class="selfRef">Table 6</a></caption>
+<p id="section-2.4-1">The Identity Service has four progressive levels of control over RP sessions:<a href="#section-2.4-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-5">
+          <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1"> </th>
-              <th class="text-left" rowspan="1" colspan="1">Expired</th>
-              <th class="text-left" rowspan="1" colspan="1">Suspended</th>
-              <th class="text-left" rowspan="1" colspan="1">Terminated</th>
+              <th class="text-left" rowspan="1" colspan="1">Check-back</th>
+              <th class="text-left" rowspan="1" colspan="1">Logout</th>
+              <th class="text-left" rowspan="1" colspan="1">Reestablish</th>
+              <th class="text-left" rowspan="1" colspan="1">Invalidate</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>IdP intent</strong>
+                <strong>Identity Service intent</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Periodic check-back</td>
+              <td class="text-left" rowspan="1" colspan="1">Periodic re-evaluation</td>
+              <td class="text-left" rowspan="1" colspan="1">Session ended</td>
               <td class="text-left" rowspan="1" colspan="1">Full access revalidation</td>
               <td class="text-left" rowspan="1" colspan="1">Security response</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>Trigger</strong>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">Time-based expiry</td>
+              <td class="text-left" rowspan="1" colspan="1">User, admin, policy, or system</td>
+              <td class="text-left" rowspan="1" colspan="1">Reestablish Session command</td>
+              <td class="text-left" rowspan="1" colspan="1">Invalidate Authentication State command</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Sessions</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Expired</td>
-              <td class="text-left" rowspan="1" colspan="1">Expired</td>
-              <td class="text-left" rowspan="1" colspan="1">Invalidated</td>
+              <td class="text-left" rowspan="1" colspan="1">Terminated</td>
+              <td class="text-left" rowspan="1" colspan="1">Invalid</td>
+              <td class="text-left" rowspan="1" colspan="1">Terminated</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Tokens</strong>
 </td>
+              <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
               <td class="text-left" rowspan="1" colspan="1">Invalidated</td>
@@ -2020,6 +1973,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>API keys</strong>
 </td>
+              <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
               <td class="text-left" rowspan="1" colspan="1">Revoked</td>
@@ -2031,13 +1985,15 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <td class="text-left" rowspan="1" colspan="1">Session Continuation, Step-Up, or Forced Reauthentication</td>
               <td class="text-left" rowspan="1" colspan="1">Forced Reauthentication only</td>
               <td class="text-left" rowspan="1" colspan="1">Forced Reauthentication only</td>
+              <td class="text-left" rowspan="1" colspan="1">Forced Reauthentication only</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>IdP session</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">May still be valid</td>
-              <td class="text-left" rowspan="1" colspan="1">MUST NOT be reused</td>
+              <td class="text-left" rowspan="1" colspan="1">MAY be terminated</td>
+              <td class="text-left" rowspan="1" colspan="1">MUST require new authentication ceremony; MAY use existing session context</td>
               <td class="text-left" rowspan="1" colspan="1">Invalidated</td>
             </tr>
             <tr>
@@ -2045,6 +2001,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
                 <strong>Returns to</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Establish</td>
+              <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
               <td class="text-left" rowspan="1" colspan="1">Establish</td>
               <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
             </tr>
@@ -2052,6 +2009,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>IPSIE level</strong>
 </td>
+              <td class="text-left" rowspan="1" colspan="1">SL1+</td>
               <td class="text-left" rowspan="1" colspan="1">SL1+</td>
               <td class="text-left" rowspan="1" colspan="1">SL2+</td>
               <td class="text-left" rowspan="1" colspan="1">SL2+</td>
@@ -2127,7 +2085,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
           <h4 id="name-protocol-expression">
 <a href="#section-3.1.3" class="section-number selfRef">3.1.3. </a><a href="#name-protocol-expression" class="section-name selfRef">Protocol Expression</a>
           </h4>
-<p id="section-3.1.3-1">An RP requesting Session Continuation <strong>MUST NOT</strong> include <code>prompt=login</code> (OIDC) or <code>ForceAuthn="true"</code> (SAML). The RP <strong>MAY</strong> use <code>prompt=none</code> (OIDC) or <code>IsPassive="true"</code> (SAML) to require silent continuation — if no valid IdP session exists, the IdP returns an error rather than prompting the user. The RP also:<a href="#section-3.1.3-1" class="pilcrow">¶</a></p>
+<p id="section-3.1.3-1">An RP requesting Session Continuation <strong>MUST NOT</strong> include <code>prompt=login</code> (OIDC) or <code>ForceAuthn="true"</code> (SAML). The RP <strong>MAY</strong> use <code>prompt=none</code> (OIDC) or <code>IsPassive="true"</code> (SAML) to require silent continuation. If no valid IdP session exists, the IdP returns an error rather than prompting the user. The RP also:<a href="#section-3.1.3-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-3.1.3-2.1">
               <p id="section-3.1.3-2.1.1">Omits <code>max_age</code> or supplies a value satisfied by the existing session.<a href="#section-3.1.3-2.1.1" class="pilcrow">¶</a></p>
@@ -2245,7 +2203,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <p id="section-3.3.1-2.4.1">Previous authentication context values <strong>MUST NOT</strong> be relied upon.<a href="#section-3.3.1-2.4.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-3.3.1-2.5">
-              <p id="section-3.3.1-2.5.1">The RP <strong>MUST</strong> obtain a new session identifier (<code>sid</code> in OIDC, <code>SessionIndex</code> in SAML).<a href="#section-3.3.1-2.5.1" class="pilcrow">¶</a></p>
+              <p id="section-3.3.1-2.5.1">The RP <strong>MUST</strong> verify that the IdP has issued a new session identifier (<code>sid</code> in OIDC, <code>SessionIndex</code> in SAML) and <strong>MUST NOT</strong> reuse the prior session identifier.<a href="#section-3.3.1-2.5.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 </section>
@@ -2264,7 +2222,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <p id="section-3.3.2-2.2.1">The RP has received an <strong>Invalidate Authentication State</strong> command from the IdP.<a href="#section-3.3.2-2.2.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-3.3.2-2.3">
-              <p id="section-3.3.2-2.3.1">An IdP-initiated logout or account recovery has occurred.<a href="#section-3.3.2-2.3.1" class="pilcrow">¶</a></p>
+              <p id="section-3.3.2-2.3.1">An Identity Service-initiated logout or account recovery has occurred.<a href="#section-3.3.2-2.3.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-3.3.2-2.4">
               <p id="section-3.3.2-2.4.1">Regulatory or security policy mandates reauthentication.<a href="#section-3.3.2-2.4.1" class="pilcrow">¶</a></p>
@@ -2278,8 +2236,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-3.3.3" class="section-number selfRef">3.3.3. </a><a href="#name-protocol-expression-3" class="section-name selfRef">Protocol Expression</a>
           </h4>
 <p id="section-3.3.3-1">An RP requesting Forced Reauthentication <strong>MUST</strong>:<a href="#section-3.3.3-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-7">
-            <caption><a href="#table-7" class="selfRef">Table 7</a></caption>
+<table class="center" id="table-6">
+            <caption><a href="#table-6" class="selfRef">Table 6</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Protocol</th>
@@ -2318,8 +2276,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         <h3 id="name-intent-comparison">
 <a href="#section-3.4" class="section-number selfRef">3.4. </a><a href="#name-intent-comparison" class="section-name selfRef">Intent Comparison</a>
         </h3>
-<table class="center" id="table-8">
-          <caption><a href="#table-8" class="selfRef">Table 8</a></caption>
+<table class="center" id="table-7">
+          <caption><a href="#table-7" class="selfRef">Table 7</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1"> </th>
@@ -2335,7 +2293,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 </td>
               <td class="text-left" rowspan="1" colspan="1">Reestablish local RP state</td>
               <td class="text-left" rowspan="1" colspan="1">Elevate assurance for a specific operation</td>
-              <td class="text-left" rowspan="1" colspan="1">Access revalidation — IdP re-evaluates policy, risk, and state</td>
+              <td class="text-left" rowspan="1" colspan="1">Access revalidation. IdP re-evaluates policy, risk, and state</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2343,7 +2301,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 </td>
               <td class="text-left" rowspan="1" colspan="1">Reused</td>
               <td class="text-left" rowspan="1" colspan="1">Reused (with additional factors)</td>
-              <td class="text-left" rowspan="1" colspan="1">Not reused — new authentication required</td>
+              <td class="text-left" rowspan="1" colspan="1">Not reused. New authentication required</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2367,7 +2325,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 </td>
               <td class="text-left" rowspan="1" colspan="1">Preserved</td>
               <td class="text-left" rowspan="1" colspan="1">Updated to reflect elevated assurance</td>
-              <td class="text-left" rowspan="1" colspan="1">New — reflects fresh authentication</td>
+              <td class="text-left" rowspan="1" colspan="1">New. Reflects fresh authentication</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2375,7 +2333,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 </td>
               <td class="text-left" rowspan="1" colspan="1">May be same or new</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
-              <td class="text-left" rowspan="1" colspan="1">New — MUST differ from prior session</td>
+              <td class="text-left" rowspan="1" colspan="1">New. MUST differ from prior session</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2387,19 +2345,11 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>Tokens and API keys</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
-              <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
-              <td class="text-left" rowspan="1" colspan="1">Unchanged (Reestablish Session) or invalidated (Invalidate Authentication State)</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
                 <strong>IdP evaluation</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Validates existing session is sufficient</td>
               <td class="text-left" rowspan="1" colspan="1">Evaluates assurance requirements</td>
-              <td class="text-left" rowspan="1" colspan="1">Full policy evaluation — risk, device posture, conditional access, account state</td>
+              <td class="text-left" rowspan="1" colspan="1">Full policy evaluation: risk, device posture, conditional access, account state</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2407,7 +2357,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 </td>
               <td class="text-left" rowspan="1" colspan="1">RP (no command received)</td>
               <td class="text-left" rowspan="1" colspan="1">RP (for a specific operation)</td>
-              <td class="text-left" rowspan="1" colspan="1">RP (in response to IdP command)</td>
+              <td class="text-left" rowspan="1" colspan="1">RP (in response to IdP command or RP-local policy)</td>
             </tr>
           </tbody>
         </table>
@@ -2419,8 +2369,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-3.5" class="section-number selfRef">3.5. </a><a href="#name-command-requirements" class="section-name selfRef">Command Requirements</a>
         </h3>
 <p id="section-3.5-1">Both lifecycle commands defined in this specification require the RP to trigger <strong>Forced Reauthentication</strong> when the subject next interacts with the RP. Session Continuation and Step-Up Authentication are <strong>NOT</strong> sufficient to satisfy either command.<a href="#section-3.5-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-9">
-          <caption><a href="#table-9" class="selfRef">Table 9</a></caption>
+<table class="center" id="table-8">
+          <caption><a href="#table-8" class="selfRef">Table 8</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Command</th>
@@ -2434,7 +2384,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
                 <strong>Reestablish Session</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Forced Reauthentication</td>
-              <td class="text-left" rowspan="1" colspan="1">The IdP must perform a full policy evaluation to determine whether to grant continued access. Reusing an existing session would bypass this evaluation.</td>
+              <td class="text-left" rowspan="1" colspan="1">The Identity Service must perform a full policy evaluation to determine whether to grant continued access. Reusing an existing session would bypass this evaluation.</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2445,7 +2395,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             </tr>
           </tbody>
         </table>
-<p id="section-3.5-3">When no command has been received — for example, when the RP's local session has expired, cookies have been lost, or the RP has performed an RP-local logout — the RP <strong>MAY</strong> allow Session Continuation. In this case, the RP does not include <code>prompt=login</code> or <code>ForceAuthn="true"</code>, and the IdP may satisfy the request from an existing authentication session.<a href="#section-3.5-3" class="pilcrow">¶</a></p>
+<p id="section-3.5-3">When no command has been received (for example, when the RP's local session has expired, cookies have been lost, or the RP has performed an RP-local logout), the RP <strong>MAY</strong> allow Session Continuation. In this case, the RP does not include <code>prompt=login</code> or <code>ForceAuthn="true"</code>, and the IdP may satisfy the request from an existing authentication session.<a href="#section-3.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="session-auth-intents">
@@ -2453,12 +2403,12 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         <h3 id="name-authentication-intent-requi">
 <a href="#section-3.6" class="section-number selfRef">3.6. </a><a href="#name-authentication-intent-requi" class="section-name selfRef">Authentication Intent Requirements by Session State</a>
         </h3>
-<p id="section-3.6-1">The authentication intent used when the subject returns to the Establish state depends on the terminal state and how it was reached.<a href="#section-3.6-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-10">
-          <caption><a href="#table-10" class="selfRef">Table 10</a></caption>
+<p id="section-3.6-1">The authentication intent used when the subject returns to the Establish state depends on the prior session state and how it was reached.<a href="#section-3.6-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-9">
+          <caption><a href="#table-9" class="selfRef">Table 9</a></caption>
 <thead>
             <tr>
-              <th class="text-left" rowspan="1" colspan="1">Terminal State</th>
+              <th class="text-left" rowspan="1" colspan="1">Prior Session State</th>
               <th class="text-left" rowspan="1" colspan="1">Trigger</th>
               <th class="text-left" rowspan="1" colspan="1">Allowed Authentication Intents</th>
               <th class="text-left" rowspan="1" colspan="1">Rationale</th>
@@ -2483,13 +2433,23 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>Suspended</strong>
+                <strong>Invalid</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Reestablish Session command</td>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Forced Reauthentication ONLY</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">IdP explicitly requires full policy re-evaluation; existing IdP session MUST NOT be reused</td>
+              <td class="text-left" rowspan="1" colspan="1">Identity Service explicitly requires full policy re-evaluation; RP MUST use <code>prompt=login</code> / <code>ForceAuthn="true"</code>; IdP MUST require new authentication ceremony</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>Terminated</strong>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">Logout (user, admin, policy, or system-initiated)</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>Forced Reauthentication ONLY</strong>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">Session ended; subject must re-authenticate through the Identity Service</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -2500,14 +2460,6 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
                 <strong>Forced Reauthentication ONLY</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Security event; all prior artifacts are untrusted; full authentication required</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">
-                <strong>Unauthenticated</strong>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">User-initiated logout</td>
-              <td class="text-left" rowspan="1" colspan="1">Session Continuation, Step-Up, or Forced Reauthentication</td>
-              <td class="text-left" rowspan="1" colspan="1">No command received; IdP session may still be valid</td>
             </tr>
           </tbody>
         </table>
@@ -2525,9 +2477,9 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         <h3 id="name-reestablish-session">
 <a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-reestablish-session" class="section-name selfRef">Reestablish Session</a>
         </h3>
-<p id="section-4.1-1">An IdP command requiring the RP to expire <strong>all</strong> of the subject's RP client sessions and reestablish them through a full authentication at the IdP. The purpose of this command is <strong>access revalidation</strong> — giving the IdP the opportunity to re-evaluate policy, risk, device posture, account state, and conditional access rules before allowing the subject to continue accessing the RP.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
-<p id="section-4.1-2">This command transitions the session to the <strong>Suspended</strong> state (see Section 2), which requires <strong>Forced Reauthentication</strong> — Session Continuation and Step-Up Authentication are not sufficient. This is distinct from time-based session expiry (the <strong>Expired</strong> state), where the IdP may satisfy the request via Session Continuation.<a href="#section-4.1-2" class="pilcrow">¶</a></p>
-<p id="section-4.1-3"><strong>Scope:</strong> All RP client sessions for the subject — browser cookie sessions, native-app session tokens, and any other interactive session state.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+<p id="section-4.1-1">An Identity Service command requiring the RP to mark <strong>all</strong> of the subject's RP client sessions as Invalid and reestablish them through a full authentication at the Identity Service. The purpose of this command is <strong>access revalidation</strong>. It gives the Identity Service the opportunity to re-evaluate policy, risk, device posture, account state, and conditional access rules before allowing the subject to continue accessing the RP.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.1-2">This command transitions the session to the <strong>Invalid</strong> state (see Section 2), which requires <strong>Forced Reauthentication</strong>. Session Continuation and Step-Up Authentication are not sufficient. This is distinct from time-based session expiry (the <strong>Expired</strong> state), where the Identity Service may satisfy the request via Session Continuation.<a href="#section-4.1-2" class="pilcrow">¶</a></p>
+<p id="section-4.1-3"><strong>Scope:</strong> All RP client sessions for the subject: browser cookie sessions, native-app session tokens, and any other interactive session state.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
 <div id="reestablish-rp">
 <section id="section-4.1.1">
           <h4 id="name-rp-requirements">
@@ -2536,38 +2488,38 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <p id="section-4.1.1-1">When an RP receives this command, it <strong>MUST</strong>:<a href="#section-4.1.1-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-4.1.1-2">
 <li id="section-4.1.1-2.1">
-              <p id="section-4.1.1-2.1.1">Expire all RP client sessions for the subject<a href="#section-4.1.1-2.1.1" class="pilcrow">¶</a></p>
+              <p id="section-4.1.1-2.1.1">Suspend all RP client sessions for the subject (sessions are no longer accepted)<a href="#section-4.1.1-2.1.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.1.1-2.2">
-              <p id="section-4.1.1-2.2.1">Expire all associated session identifiers (delete session cookies, expire native-app session tokens)<a href="#section-4.1.1-2.2.1" class="pilcrow">¶</a></p>
+              <p id="section-4.1.1-2.2.1">Invalidate all associated session identifiers (delete session cookies, revoke native-app session tokens)<a href="#section-4.1.1-2.2.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.1.1-2.3">
-              <p id="section-4.1.1-2.3.1">Require <strong>Forced Reauthentication</strong> at the IdP (see Section 3.3)<a href="#section-4.1.1-2.3.1" class="pilcrow">¶</a></p>
-</li>
-            <li id="section-4.1.1-2.4">
-              <p id="section-4.1.1-2.4.1">NOT silently re-establish the session using existing tokens, SSO cookies, or Session Continuation<a href="#section-4.1.1-2.4.1" class="pilcrow">¶</a></p>
+              <p id="section-4.1.1-2.3.1">Require <strong>Forced Reauthentication</strong> at the Identity Service (see Section 3.3)<a href="#section-4.1.1-2.3.1" class="pilcrow">¶</a></p>
 </li>
           </ol>
 <p id="section-4.1.1-3">The RP <strong>MUST NOT</strong>:<a href="#section-4.1.1-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-4.1.1-4.1">
-              <p id="section-4.1.1-4.1.1">Revoke OAuth access tokens or refresh tokens at the Authorization Server<a href="#section-4.1.1-4.1.1" class="pilcrow">¶</a></p>
+              <p id="section-4.1.1-4.1.1">Silently re-establish the session using existing tokens, SSO cookies, or Session Continuation<a href="#section-4.1.1-4.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.1.1-4.2">
-              <p id="section-4.1.1-4.2.1">Revoke API keys (service keys, personal access tokens, static bearer tokens)<a href="#section-4.1.1-4.2.1" class="pilcrow">¶</a></p>
+              <p id="section-4.1.1-4.2.1">Revoke OAuth access tokens or refresh tokens at the Authorization Server<a href="#section-4.1.1-4.2.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.1.1-4.3">
-              <p id="section-4.1.1-4.3.1">Treat this as authorization revocation or change roles/permissions<a href="#section-4.1.1-4.3.1" class="pilcrow">¶</a></p>
+              <p id="section-4.1.1-4.3.1">Revoke API keys (service keys, personal access tokens, static bearer tokens)<a href="#section-4.1.1-4.3.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="section-4.1.1-4.4">
+              <p id="section-4.1.1-4.4.1">Treat this as authorization revocation or change roles/permissions<a href="#section-4.1.1-4.4.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 </section>
 </div>
 <div id="reestablish-idp">
 <section id="section-4.1.2">
-          <h4 id="name-idp-requirements">
-<a href="#section-4.1.2" class="section-number selfRef">4.1.2. </a><a href="#name-idp-requirements" class="section-name selfRef">IdP Requirements</a>
+          <h4 id="name-identity-service-requiremen">
+<a href="#section-4.1.2" class="section-number selfRef">4.1.2. </a><a href="#name-identity-service-requiremen" class="section-name selfRef">Identity Service Requirements</a>
           </h4>
-<p id="section-4.1.2-1">When an IdP sends this command, it <strong>MAY</strong>:<a href="#section-4.1.2-1" class="pilcrow">¶</a></p>
+<p id="section-4.1.2-1">When an Identity Service sends this command, it <strong>MAY</strong>:<a href="#section-4.1.2-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-4.1.2-2.1">
               <p id="section-4.1.2-2.1.1">Expire the IdP SSO session (deployment-dependent)<a href="#section-4.1.2-2.1.1" class="pilcrow">¶</a></p>
@@ -2580,8 +2532,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
           <h4 id="name-resulting-state">
 <a href="#section-4.1.3" class="section-number selfRef">4.1.3. </a><a href="#name-resulting-state" class="section-name selfRef">Resulting State</a>
           </h4>
-<table class="center" id="table-11">
-            <caption><a href="#table-11" class="selfRef">Table 11</a></caption>
+<table class="center" id="table-10">
+            <caption><a href="#table-10" class="selfRef">Table 10</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Artifact</th>
@@ -2592,7 +2544,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">RP client session</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>Expired</strong>
+                  <strong>Invalid</strong>
 </td>
               </tr>
               <tr>
@@ -2635,8 +2587,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         <h3 id="name-invalidate-authentication-s">
 <a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-invalidate-authentication-s" class="section-name selfRef">Invalidate Authentication State</a>
         </h3>
-<p id="section-4.2-1">An IdP command requiring all existing authentication artifacts to be treated as untrusted, including sessions, access tokens, refresh tokens, and API keys. This command transitions the session to the <strong>Terminated</strong> state (see Section 2), which invalidates all artifacts and requires <strong>Forced Reauthentication</strong>. This is the most severe level of IdP control, indicating a security event.<a href="#section-4.2-1" class="pilcrow">¶</a></p>
-<p id="section-4.2-2"><strong>Scope:</strong> All prior authentication state — sessions, tokens, and API keys.<a href="#section-4.2-2" class="pilcrow">¶</a></p>
+<p id="section-4.2-1">An Identity Service command requiring <strong>the RP</strong> to treat all existing authentication artifacts as untrusted, including sessions, access tokens, refresh tokens, and API keys. This command transitions the session to the <strong>Terminated</strong> state (see Section 2), which invalidates all artifacts and requires <strong>Forced Reauthentication</strong>. This is the most severe level of Identity Service control, indicating a security event.<a href="#section-4.2-1" class="pilcrow">¶</a></p>
+<p id="section-4.2-2"><strong>Scope:</strong> All prior authentication state: sessions, tokens, and API keys.<a href="#section-4.2-2" class="pilcrow">¶</a></p>
 <div id="revoke-rp">
 <section id="section-4.2.1">
           <h4 id="name-rp-requirements-2">
@@ -2645,10 +2597,10 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <p id="section-4.2.1-1">When an RP receives this command, it <strong>MUST</strong>:<a href="#section-4.2.1-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-4.2.1-2">
 <li id="section-4.2.1-2.1">
-              <p id="section-4.2.1-2.1.1">Expire all RP client sessions for the subject<a href="#section-4.2.1-2.1.1" class="pilcrow">¶</a></p>
+              <p id="section-4.2.1-2.1.1">Terminate all RP client sessions for the subject (sessions are no longer accepted)<a href="#section-4.2.1-2.1.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.2.1-2.2">
-              <p id="section-4.2.1-2.2.1">Expire all associated session identifiers (delete session cookies, expire native-app session tokens)<a href="#section-4.2.1-2.2.1" class="pilcrow">¶</a></p>
+              <p id="section-4.2.1-2.2.1">Invalidate all associated session identifiers (delete session cookies, revoke native-app session tokens)<a href="#section-4.2.1-2.2.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.2.1-2.3">
               <p id="section-4.2.1-2.3.1">Invalidate all existing access tokens for the subject<a href="#section-4.2.1-2.3.1" class="pilcrow">¶</a></p>
@@ -2660,10 +2612,10 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <p id="section-4.2.1-2.5.1">Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)<a href="#section-4.2.1-2.5.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.2.1-2.6">
-              <p id="section-4.2.1-2.6.1">Require <strong>Forced Reauthentication</strong> at the IdP (see Section 3.3)<a href="#section-4.2.1-2.6.1" class="pilcrow">¶</a></p>
+              <p id="section-4.2.1-2.6.1">Require <strong>Forced Reauthentication</strong> at the Identity Service (see Section 3.3)<a href="#section-4.2.1-2.6.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.2.1-2.7">
-              <p id="section-4.2.1-2.7.1">Stop any background API operations using existing tokens or API keys<a href="#section-4.2.1-2.7.1" class="pilcrow">¶</a></p>
+              <p id="section-4.2.1-2.7.1">Reject any subsequent use of tokens or API keys that were issued before this command was received<a href="#section-4.2.1-2.7.1" class="pilcrow">¶</a></p>
 </li>
           </ol>
 <p id="section-4.2.1-3">The RP <strong>MUST NOT</strong>:<a href="#section-4.2.1-3" class="pilcrow">¶</a></p>
@@ -2679,10 +2631,10 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 </div>
 <div id="revoke-idp">
 <section id="section-4.2.2">
-          <h4 id="name-idp-requirements-2">
-<a href="#section-4.2.2" class="section-number selfRef">4.2.2. </a><a href="#name-idp-requirements-2" class="section-name selfRef">IdP Requirements</a>
+          <h4 id="name-identity-service-requirement">
+<a href="#section-4.2.2" class="section-number selfRef">4.2.2. </a><a href="#name-identity-service-requirement" class="section-name selfRef">Identity Service Requirements</a>
           </h4>
-<p id="section-4.2.2-1">When an IdP sends this command, it <strong>MUST</strong>:<a href="#section-4.2.2-1" class="pilcrow">¶</a></p>
+<p id="section-4.2.2-1">When an Identity Service sends this command, it <strong>MUST</strong>:<a href="#section-4.2.2-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-4.2.2-2">
 <li id="section-4.2.2-2.1">
               <p id="section-4.2.2-2.1.1">Invalidate the IdP SSO session<a href="#section-4.2.2-2.1.1" class="pilcrow">¶</a></p>
@@ -2691,10 +2643,10 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <p id="section-4.2.2-2.2.1">Revoke refresh tokens for the subject at the Authorization Server<a href="#section-4.2.2-2.2.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.2.2-2.3">
-              <p id="section-4.2.2-2.3.1">Revoke or invalidate access tokens for the subject<a href="#section-4.2.2-2.3.1" class="pilcrow">¶</a></p>
+              <p id="section-4.2.2-2.3.1">Invalidate all access tokens for the subject (e.g., via revocation, revocation lists, or CAEP events to Resource Servers)<a href="#section-4.2.2-2.3.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-4.2.2-2.4">
-              <p id="section-4.2.2-2.4.1">Ensure Resource Servers can detect token invalidation<a href="#section-4.2.2-2.4.1" class="pilcrow">¶</a></p>
+              <p id="section-4.2.2-2.4.1">Notify Resource Servers of token invalidation via applicable mechanisms (e.g., token introspection status, revocation lists, or CAEP/SSF events) so that Resource Servers can detect and reject invalidated tokens<a href="#section-4.2.2-2.4.1" class="pilcrow">¶</a></p>
 </li>
           </ol>
 </section>
@@ -2704,8 +2656,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
           <h4 id="name-resulting-state-2">
 <a href="#section-4.2.3" class="section-number selfRef">4.2.3. </a><a href="#name-resulting-state-2" class="section-name selfRef">Resulting State</a>
           </h4>
-<table class="center" id="table-12">
-            <caption><a href="#table-12" class="selfRef">Table 12</a></caption>
+<table class="center" id="table-11">
+            <caption><a href="#table-11" class="selfRef">Table 11</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Artifact</th>
@@ -2716,7 +2668,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">RP client session</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>Invalidated</strong>
+                  <strong>Terminated</strong>
 </td>
               </tr>
               <tr>
@@ -2767,8 +2719,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-4.3.1" class="section-number selfRef">4.3.1. </a><a href="#name-reestablish-session-events" class="section-name selfRef">Reestablish Session Events</a>
           </h4>
 <p id="section-4.3.1-1">After processing a Reestablish Session command, the RP <strong>SHOULD</strong> publish:<a href="#section-4.3.1-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-13">
-            <caption><a href="#table-13" class="selfRef">Table 13</a></caption>
+<table class="center" id="table-12">
+            <caption><a href="#table-12" class="selfRef">Table 12</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">CAEP Event</th>
@@ -2791,13 +2743,13 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <p id="section-4.3.1-3">The RP <strong>SHOULD</strong> include the following claims in the <code>session-revoked</code> event:<a href="#section-4.3.1-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-4.3.1-4.1">
-              <p id="section-4.3.1-4.1.1"><code>sub</code> — the subject whose session was expired<a href="#section-4.3.1-4.1.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-4.1.1"><code>sub</code>: The subject whose session was marked Invalid<a href="#section-4.3.1-4.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.3.1-4.2">
-              <p id="section-4.3.1-4.2.1"><code>reason_admin</code> — indicate that session reestablishment was requested (e.g., <code>"Session reestablishment required by IdP"</code>)<a href="#section-4.3.1-4.2.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-4.2.1"><code>reason_admin</code>: Indicate that session reestablishment was requested (e.g., <code>"Session reestablishment required by Identity Service"</code>)<a href="#section-4.3.1-4.2.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.3.1-4.3">
-              <p id="section-4.3.1-4.3.1"><code>event_timestamp</code> — the time at which the RP expired the session<a href="#section-4.3.1-4.3.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.1-4.3.1"><code>event_timestamp</code>: The time at which the RP marked the session Invalid<a href="#section-4.3.1-4.3.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="section-4.3.1-5">The RP <strong>SHOULD NOT</strong> publish <code>credential-change</code> events for Reestablish Session, as tokens and API keys are unaffected.<a href="#section-4.3.1-5" class="pilcrow">¶</a></p>
@@ -2809,8 +2761,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-4.3.2" class="section-number selfRef">4.3.2. </a><a href="#name-invalidate-authentication-st" class="section-name selfRef">Invalidate Authentication State Events</a>
           </h4>
 <p id="section-4.3.2-1">After processing an Invalidate Authentication State command, the RP <strong>SHOULD</strong> publish:<a href="#section-4.3.2-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-14">
-            <caption><a href="#table-14" class="selfRef">Table 14</a></caption>
+<table class="center" id="table-13">
+            <caption><a href="#table-13" class="selfRef">Table 13</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">CAEP Event</th>
@@ -2826,7 +2778,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
                 <td class="text-left" rowspan="1" colspan="1">
                   <code>https://schemas.openid.net/secevent/caep/event-type/session-revoked</code>
 </td>
-                <td class="text-left" rowspan="1" colspan="1">Notify the ecosystem that the subject's RP client session has been invalidated</td>
+                <td class="text-left" rowspan="1" colspan="1">Notify the ecosystem that the subject's RP client session has been terminated</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">
@@ -2842,18 +2794,18 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <p id="section-4.3.2-3">The RP <strong>SHOULD</strong> include the following claims in the <code>session-revoked</code> event:<a href="#section-4.3.2-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-4.3.2-4.1">
-              <p id="section-4.3.2-4.1.1"><code>sub</code> — the subject whose session was invalidated<a href="#section-4.3.2-4.1.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.2-4.1.1"><code>sub</code>: The subject whose session was terminated<a href="#section-4.3.2-4.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.3.2-4.2">
-              <p id="section-4.3.2-4.2.1"><code>reason_admin</code> — indicate the security context (e.g., <code>"Authentication state invalidated by IdP command"</code>)<a href="#section-4.3.2-4.2.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.2-4.2.1"><code>reason_admin</code>: Indicate the security context (e.g., <code>"Authentication state invalidated by Identity Service command"</code>)<a href="#section-4.3.2-4.2.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.3.2-4.3">
-              <p id="section-4.3.2-4.3.1"><code>event_timestamp</code> — the time at which the RP invalidated the session<a href="#section-4.3.2-4.3.1" class="pilcrow">¶</a></p>
+              <p id="section-4.3.2-4.3.1"><code>event_timestamp</code>: The time at which the RP terminated the session<a href="#section-4.3.2-4.3.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="section-4.3.2-5">The RP <strong>SHOULD</strong> publish separate <code>credential-change</code> events for each credential type affected:<a href="#section-4.3.2-5" class="pilcrow">¶</a></p>
-<table class="center" id="table-15">
-            <caption><a href="#table-15" class="selfRef">Table 15</a></caption>
+<table class="center" id="table-14">
+            <caption><a href="#table-14" class="selfRef">Table 14</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Credential type</th>
@@ -2891,6 +2843,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               </tr>
             </tbody>
           </table>
+<p id="section-4.3.2-7"><strong>Note on credential types:</strong> The <code>access_token</code> and <code>refresh_token</code> credential types are defined in the CAEP specification. The <code>api_key</code> credential type is a <strong>proposed extension</strong> not yet registered in the CAEP specification; implementers should treat this as subject to change pending formal registration.<a href="#section-4.3.2-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2905,9 +2858,9 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
           <h4 id="name-atomicity">
 <a href="#section-4.4.1" class="section-number selfRef">4.4.1. </a><a href="#name-atomicity" class="section-name selfRef">Atomicity</a>
           </h4>
-<p id="section-4.4.1-1">Each command <strong>MUST</strong> either complete fully or fail. Partial completion is not acceptable — the RP <strong>MUST NOT</strong> report success if any required step has not been performed.<a href="#section-4.4.1-1" class="pilcrow">¶</a></p>
-<p id="section-4.4.1-2">If the RP requires asynchronous processing to complete a command (e.g., AS-side token revocation involves an external call), the RP <strong>MUST</strong> use a protocol that supports asynchronous completion (e.g., returning a pending status and confirming completion later). The RP <strong>MUST NOT</strong> report success before all steps are complete.<a href="#section-4.4.1-2" class="pilcrow">¶</a></p>
-<p id="section-4.4.1-3">If any step fails (e.g., AS is unreachable for token revocation), the RP <strong>MUST</strong> report failure. The IdP <strong>SHOULD</strong> retry failed commands.<a href="#section-4.4.1-3" class="pilcrow">¶</a></p>
+<p id="section-4.4.1-1">Each command <strong>MUST</strong> either complete fully or fail. Partial completion is not acceptable. The RP <strong>MUST NOT</strong> report success if any required step has not been performed.<a href="#section-4.4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.4.1-2">If the RP requires asynchronous processing to complete a command (e.g., AS-side token revocation involves an external call), the RP <strong>MUST</strong> use a mechanism that supports deferred completion. The OP Commands specification supports asynchronous command processing; where this mechanism is not available, this specification proposes that implementations adopt an equivalent async response model (e.g., returning an accepted status and providing a callback or polling mechanism for completion confirmation). The RP <strong>MUST NOT</strong> report success before all steps are complete.<a href="#section-4.4.1-2" class="pilcrow">¶</a></p>
+<p id="section-4.4.1-3">If any step fails (e.g., AS is unreachable for token revocation), the RP <strong>MUST</strong> report failure. The Identity Service <strong>SHOULD</strong> retry failed commands.<a href="#section-4.4.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="command-idempotency">
@@ -2924,14 +2877,14 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
           <h4 id="name-command-ordering">
 <a href="#section-4.4.3" class="section-number selfRef">4.4.3. </a><a href="#name-command-ordering" class="section-name selfRef">Command Ordering</a>
           </h4>
-<p id="section-4.4.3-1">Invalidate Authentication State is a strict superset of Reestablish Session — it includes all session expiry steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the <strong>Suspended</strong> state while Invalidate Authentication State transitions to the <strong>Terminated</strong> state (see Section 2.4).<a href="#section-4.4.3-1" class="pilcrow">¶</a></p>
+<p id="section-4.4.3-1">Invalidate Authentication State is a strict superset of Reestablish Session. It includes all session invalidation steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the <strong>Invalid</strong> state while Invalidate Authentication State transitions to the <strong>Terminated</strong> state (see Section 2.4).<a href="#section-4.4.3-1" class="pilcrow">¶</a></p>
 <p id="section-4.4.3-2">If both commands are received for the same subject:<a href="#section-4.4.3-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-4.4.3-3.1">
-              <p id="section-4.4.3-3.1.1"><strong>Reestablish Session after Invalidate Authentication State:</strong> The RP <strong>MUST</strong> succeed. The session is already in the Terminated state — all artifacts are invalidated. No further action is needed.<a href="#section-4.4.3-3.1.1" class="pilcrow">¶</a></p>
+              <p id="section-4.4.3-3.1.1"><strong>Reestablish Session after Invalidate Authentication State:</strong> The RP <strong>MUST</strong> succeed. The session is already in the Terminated state. All artifacts are invalidated. No further action is needed.<a href="#section-4.4.3-3.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-4.4.3-3.2">
-              <p id="section-4.4.3-3.2.1"><strong>Invalidate Authentication State after Reestablish Session:</strong> The RP <strong>MUST</strong> process the full Invalidate Authentication State command. The session transitions from the Suspended state to the Terminated state. Sessions may already be expired, but the RP must additionally invalidate tokens and revoke API keys.<a href="#section-4.4.3-3.2.1" class="pilcrow">¶</a></p>
+              <p id="section-4.4.3-3.2.1"><strong>Invalidate Authentication State after Reestablish Session:</strong> The RP <strong>MUST</strong> process the full Invalidate Authentication State command. The session transitions from the Invalid state to the Terminated state. Sessions may already be expired, but the RP must additionally invalidate tokens and revoke API keys.<a href="#section-4.4.3-3.2.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="section-4.4.3-4">In general, the RP <strong>SHOULD</strong> apply each command to the current state of the subject's artifacts. A command succeeds if the resulting state defined in Sections 4.1.3 or 4.2.3 is achieved, regardless of what prior state existed.<a href="#section-4.4.3-4" class="pilcrow">¶</a></p>
@@ -2959,17 +2912,18 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <div id="reestablish-mappings">
 <section id="section-5.2">
         <h3 id="name-reestablish-session-protoco">
-<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-reestablish-session-protoco" class="section-name selfRef">Reestablish Session — Protocol Mappings</a>
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-reestablish-session-protoco" class="section-name selfRef">Reestablish Session: Protocol Mappings</a>
         </h3>
-<p id="section-5.2-1">The following protocols can <strong>fully complete</strong> the Reestablish Session command because they expire the RP client session and require the RP to reestablish it through a full authentication at the IdP.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-1">The following protocols can <strong>fully complete</strong> the Reestablish Session command because they terminate or mark Invalid the RP client session and require the RP to reestablish it through a full authentication at the Identity Service.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2"><strong>Note on Logout protocols (BCL, FCL, SAML SLO):</strong> These protocols implement the <strong>Logout</strong> trigger, transitioning the session to the <strong>Terminated</strong> state (tokens preserved). Because Terminated requires <strong>Forced Reauthentication</strong> through the Identity Service, Logout gives the Identity Service the same access-revalidation opportunity as the Reestablish Session command. The IdP can re-evaluate policy, risk, device posture, and account state before issuing a new assertion. This is why Logout protocols satisfy the Reestablish Session command contract, even though they terminate rather than mark the session Invalid.<a href="#section-5.2-2" class="pilcrow">¶</a></p>
 <div id="reestablish-bcl">
 <section id="section-5.2.1">
           <h4 id="name-oidc-back-channel-logout-re">
 <a href="#section-5.2.1" class="section-number selfRef">5.2.1. </a><a href="#name-oidc-back-channel-logout-re" class="section-name selfRef">OIDC Back-Channel Logout (RECOMMENDED)</a>
           </h4>
 <p id="section-5.2.1-1"><strong>Specification:</strong> <span>[<a href="#OIDC.BackChannelLogout" class="cite xref">OIDC.BackChannelLogout</a>]</span><a href="#section-5.2.1-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-16">
-            <caption><a href="#table-16" class="selfRef">Table 16</a></caption>
+<table class="center" id="table-15">
+            <caption><a href="#table-15" class="selfRef">Table 15</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Element</th>
@@ -2994,7 +2948,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">RP behavior</td>
-                <td class="text-left" rowspan="1" colspan="1">Expire the RP client session(s) matching <code>sub</code>/<code>sid</code>; do NOT revoke OAuth tokens</td>
+                <td class="text-left" rowspan="1" colspan="1">Terminate (Logout transition) the RP client session(s) matching <code>sub</code>/<code>sid</code>; do NOT revoke OAuth tokens</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">IdP SSO session</td>
@@ -3005,7 +2959,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
                   <strong>Completes command?</strong>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>Yes</strong> — fully satisfies Reestablish Session</td>
+                  <strong>Yes</strong> — satisfies Reestablish Session via Logout (see note above)</td>
               </tr>
             </tbody>
           </table>
@@ -3018,8 +2972,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-5.2.2" class="section-number selfRef">5.2.2. </a><a href="#name-oidc-front-channel-logout-a" class="section-name selfRef">OIDC Front-Channel Logout (ACCEPTABLE)</a>
           </h4>
 <p id="section-5.2.2-1"><strong>Specification:</strong> <span>[<a href="#OIDC.FrontChannelLogout" class="cite xref">OIDC.FrontChannelLogout</a>]</span><a href="#section-5.2.2-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-17">
-            <caption><a href="#table-17" class="selfRef">Table 17</a></caption>
+<table class="center" id="table-16">
+            <caption><a href="#table-16" class="selfRef">Table 16</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Element</th>
@@ -3039,14 +2993,14 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">RP behavior</td>
-                <td class="text-left" rowspan="1" colspan="1">Clear session cookies and expire server-side session state</td>
+                <td class="text-left" rowspan="1" colspan="1">Terminate (Logout transition) the RP session; clear session cookies and expire server-side session state; do NOT revoke OAuth tokens</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">
                   <strong>Completes command?</strong>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>Conditionally</strong> — only when browser is active and iframes/cookies are not blocked</td>
+                  <strong>Conditionally</strong> — only when browser is active and iframes/cookies are not blocked; satisfies Reestablish Session via Logout (see note above)</td>
               </tr>
             </tbody>
           </table>
@@ -3059,8 +3013,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-5.2.3" class="section-number selfRef">5.2.3. </a><a href="#name-saml-20-single-logout-accep" class="section-name selfRef">SAML 2.0 Single Logout (ACCEPTABLE)</a>
           </h4>
 <p id="section-5.2.3-1"><strong>Specification:</strong> <span>[<a href="#SAML2.Profiles" class="cite xref">SAML2.Profiles</a>]</span> Section 4.4<a href="#section-5.2.3-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-18">
-            <caption><a href="#table-18" class="selfRef">Table 18</a></caption>
+<table class="center" id="table-17">
+            <caption><a href="#table-17" class="selfRef">Table 17</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Element</th>
@@ -3089,7 +3043,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">SP behavior</td>
-                <td class="text-left" rowspan="1" colspan="1">Expire the RP client session matching the NameID/SessionIndex; respond with <code>&lt;LogoutResponse&gt;</code>
+                <td class="text-left" rowspan="1" colspan="1">Terminate (Logout transition) the RP client session matching the NameID/SessionIndex; do NOT revoke OAuth tokens; respond with <code>&lt;LogoutResponse&gt;</code>
 </td>
               </tr>
               <tr>
@@ -3097,7 +3051,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
                   <strong>Completes command?</strong>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>Yes</strong> (back-channel SOAP) / <strong>Conditionally</strong> (front-channel)</td>
+                  <strong>Yes</strong> (back-channel SOAP) / <strong>Conditionally</strong> (front-channel) — satisfies Reestablish Session via Logout (see note above)</td>
               </tr>
             </tbody>
           </table>
@@ -3108,12 +3062,12 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <div id="reestablish-op-commands">
 <section id="section-5.2.4">
           <h4 id="name-openid-provider-commands-re">
-<a href="#section-5.2.4" class="section-number selfRef">5.2.4. </a><a href="#name-openid-provider-commands-re" class="section-name selfRef">OpenID Provider Commands: <code>reestablish</code> (RECOMMENDED)</a>
+<a href="#section-5.2.4" class="section-number selfRef">5.2.4. </a><a href="#name-openid-provider-commands-re" class="section-name selfRef">OpenID Provider Commands: <code>reestablish</code> (PROPOSED)</a>
           </h4>
-<p id="section-5.2.4-1"><strong>Specification:</strong> <span>[<a href="#OP-Commands" class="cite xref">OP-Commands</a>]</span><a href="#section-5.2.4-1" class="pilcrow">¶</a></p>
-<p id="section-5.2.4-2">This specification defines a new OP Command type <strong><code>reestablish</code></strong> that maps to the Reestablish Session lifecycle command. See Appendix C for the proposed formal registration.<a href="#section-5.2.4-2" class="pilcrow">¶</a></p>
-<table class="center" id="table-19">
-            <caption><a href="#table-19" class="selfRef">Table 19</a></caption>
+<p id="section-5.2.4-1"><strong>Specification:</strong> <span>[<a href="#OP-Commands" class="cite xref">OP-Commands</a>]</span> (proposed extension — see Appendix C)<a href="#section-5.2.4-1" class="pilcrow">¶</a></p>
+<p id="section-5.2.4-2">This specification proposes a new OP Command type <strong><code>reestablish</code></strong> as an extension to <span>[<a href="#OP-Commands" class="cite xref">OP-Commands</a>]</span>. The <code>reestablish</code> command type is not yet registered in the OP Commands specification; see Appendix C for the proposed formal registration. When adopted, it maps directly to the Reestablish Session lifecycle command.<a href="#section-5.2.4-2" class="pilcrow">¶</a></p>
+<table class="center" id="table-18">
+            <caption><a href="#table-18" class="selfRef">Table 18</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Element</th>
@@ -3123,7 +3077,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             <tbody>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Trigger</td>
-                <td class="text-left" rowspan="1" colspan="1">IdP sends a Command Token to the RP's registered command endpoint</td>
+                <td class="text-left" rowspan="1" colspan="1">Identity Service sends a Command Token to the RP's registered command endpoint</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Command type</td>
@@ -3133,7 +3087,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Token type</td>
-                <td class="text-left" rowspan="1" colspan="1">JWT with <code>typ: command+jwt</code>, signed with IdP signing keys</td>
+                <td class="text-left" rowspan="1" colspan="1">JWT with <code>typ: command+jwt</code>, signed with Identity Service signing keys</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Required claims</td>
@@ -3143,14 +3097,14 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">RP behavior</td>
-                <td class="text-left" rowspan="1" colspan="1">Expire all RP client sessions for the subject; do NOT revoke OAuth tokens; require full authentication at IdP for session reestablishment</td>
+                <td class="text-left" rowspan="1" colspan="1">Suspend all RP client sessions for the subject; do NOT revoke OAuth tokens; require Forced Reauthentication at Identity Service for session reestablishment</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">
                   <strong>Completes command?</strong>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <strong>Yes</strong> — fully satisfies Reestablish Session</td>
+                  <strong>Yes</strong> — fully satisfies Reestablish Session when adopted</td>
               </tr>
             </tbody>
           </table>
@@ -3162,7 +3116,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <div id="revoke-mappings">
 <section id="section-5.3">
         <h3 id="name-invalidate-authentication-sta">
-<a href="#section-5.3" class="section-number selfRef">5.3. </a><a href="#name-invalidate-authentication-sta" class="section-name selfRef">Invalidate Authentication State — Protocol Mappings</a>
+<a href="#section-5.3" class="section-number selfRef">5.3. </a><a href="#name-invalidate-authentication-sta" class="section-name selfRef">Invalidate Authentication State: Protocol Mappings</a>
         </h3>
 <div id="revoke-op-invalidate">
 <section id="section-5.3.1">
@@ -3170,9 +3124,9 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-5.3.1" class="section-number selfRef">5.3.1. </a><a href="#name-openid-provider-commands-in" class="section-name selfRef">OpenID Provider Commands: <code>invalidate</code> (RECOMMENDED)</a>
           </h4>
 <p id="section-5.3.1-1"><strong>Specification:</strong> <span>[<a href="#OP-Commands" class="cite xref">OP-Commands</a>]</span><a href="#section-5.3.1-1" class="pilcrow">¶</a></p>
-<p id="section-5.3.1-2">The OP Command type <strong><code>invalidate</code></strong> maps to the Invalidate Authentication State lifecycle command, transitioning the session to the <strong>Terminated</strong> state. The <code>invalidate</code> command is a <strong>strict superset</strong> of the <code>reestablish</code> command — it includes all session expiry steps plus token invalidation and API key revocation. When the IdP sends <code>invalidate</code>, it signals that all prior authentication artifacts for the subject must be treated as untrusted.<a href="#section-5.3.1-2" class="pilcrow">¶</a></p>
-<table class="center" id="table-20">
-            <caption><a href="#table-20" class="selfRef">Table 20</a></caption>
+<p id="section-5.3.1-2">The OP Command type <strong><code>invalidate</code></strong> maps to the Invalidate Authentication State lifecycle command, transitioning the session to the <strong>Terminated</strong> state. The <code>invalidate</code> command is a <strong>strict superset</strong> of the <code>reestablish</code> command. It includes all session invalidation steps plus token invalidation and API key revocation. When the Identity Service sends <code>invalidate</code>, it signals that all prior authentication artifacts for the subject must be treated as untrusted.<a href="#section-5.3.1-2" class="pilcrow">¶</a></p>
+<table class="center" id="table-19">
+            <caption><a href="#table-19" class="selfRef">Table 19</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Element</th>
@@ -3182,7 +3136,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             <tbody>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Trigger</td>
-                <td class="text-left" rowspan="1" colspan="1">IdP sends a Command Token to the RP's registered command endpoint</td>
+                <td class="text-left" rowspan="1" colspan="1">Identity Service sends a Command Token to the RP's registered command endpoint</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Command type</td>
@@ -3192,7 +3146,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Token type</td>
-                <td class="text-left" rowspan="1" colspan="1">JWT with <code>typ: command+jwt</code>, signed with IdP signing keys</td>
+                <td class="text-left" rowspan="1" colspan="1">JWT with <code>typ: command+jwt</code>, signed with Identity Service signing keys</td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Required claims</td>
@@ -3222,8 +3176,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-5.3.2" class="section-number selfRef">5.3.2. </a><a href="#name-protocol-comparison" class="section-name selfRef">Protocol Comparison</a>
           </h4>
 <p id="section-5.3.2-1">The following table compares the scope of each protocol when used for the Invalidate Authentication State command.<a href="#section-5.3.2-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-21">
-            <caption><a href="#table-21" class="selfRef">Table 21</a></caption>
+<table class="center" id="table-20">
+            <caption><a href="#table-20" class="selfRef">Table 20</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Protocol</th>
@@ -3278,8 +3232,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             </tbody>
           </table>
 <p id="section-5.3.2-3">When not using OP Commands (<code>invalidate</code>), implementations MUST compose protocols to achieve full coverage:<a href="#section-5.3.2-3" class="pilcrow">¶</a></p>
-<table class="center" id="table-22">
-            <caption><a href="#table-22" class="selfRef">Table 22</a></caption>
+<table class="center" id="table-21">
+            <caption><a href="#table-21" class="selfRef">Table 21</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Layer</th>
@@ -3325,9 +3279,9 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-5.3.3" class="section-number selfRef">5.3.3. </a><a href="#name-supplementary-protocols" class="section-name selfRef">Supplementary Protocols</a>
           </h4>
 <p id="section-5.3.3-1">The following protocols may be used as <strong>supplementary components</strong> when OP Commands (<code>invalidate</code>) is not available, or for additional ecosystem-wide enforcement.<a href="#section-5.3.3-1" class="pilcrow">¶</a></p>
-<p id="section-5.3.3-2"><strong>OAuth 2.0 Token Revocation — RFC 7009 (token layer)</strong><a href="#section-5.3.3-2" class="pilcrow">¶</a></p>
-<table class="center" id="table-23">
-            <caption><a href="#table-23" class="selfRef">Table 23</a></caption>
+<p id="section-5.3.3-2"><strong>OAuth 2.0 Token Revocation: RFC 7009 (token layer)</strong><a href="#section-5.3.3-2" class="pilcrow">¶</a></p>
+<table class="center" id="table-22">
+            <caption><a href="#table-22" class="selfRef">Table 22</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Element</th>
@@ -3363,8 +3317,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             </tbody>
           </table>
 <p id="section-5.3.3-4"><strong>OAuth 2.0 Global Token Revocation (token layer)</strong><a href="#section-5.3.3-4" class="pilcrow">¶</a></p>
-<table class="center" id="table-24">
-            <caption><a href="#table-24" class="selfRef">Table 24</a></caption>
+<table class="center" id="table-23">
+            <caption><a href="#table-23" class="selfRef">Table 23</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Element</th>
@@ -3394,8 +3348,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             </tbody>
           </table>
 <p id="section-5.3.3-6"><strong>Shared Signals / CAEP (supplementary notification)</strong><a href="#section-5.3.3-6" class="pilcrow">¶</a></p>
-<table class="center" id="table-25">
-            <caption><a href="#table-25" class="selfRef">Table 25</a></caption>
+<table class="center" id="table-24">
+            <caption><a href="#table-24" class="selfRef">Table 24</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Element</th>
@@ -3437,8 +3391,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-5.4" class="section-number selfRef">5.4. </a><a href="#name-protocol-mapping-summary" class="section-name selfRef">Protocol Mapping Summary</a>
         </h3>
 <p id="section-5.4-1">Both commands are <strong>REQUIRED at SL2</strong>. The following table summarizes which command each protocol can fully complete.<a href="#section-5.4-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-26">
-          <caption><a href="#table-26" class="selfRef">Table 26</a></caption>
+<table class="center" id="table-25">
+          <caption><a href="#table-25" class="selfRef">Table 25</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Protocol</th>
@@ -3452,7 +3406,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
                 <strong>OP Commands (<code>reestablish</code>)</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>RECOMMENDED</strong> — completes command</td>
+                <strong>PROPOSED</strong> — completes command when adopted (see Appendix C)</td>
               <td class="text-left" rowspan="1" colspan="1">Not applicable</td>
             </tr>
             <tr>
@@ -3469,35 +3423,37 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 </td>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>RECOMMENDED</strong> — completes command</td>
-              <td class="text-left" rowspan="1" colspan="1">Session layer only — must compose with token revocation and API key revocation</td>
+              <td class="text-left" rowspan="1" colspan="1">Session layer only; must compose with token revocation and API key revocation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>OIDC Front-Channel Logout</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">ACCEPTABLE — completes conditionally</td>
-              <td class="text-left" rowspan="1" colspan="1">Session layer only — must compose with token revocation and API key revocation</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>ACCEPTABLE</strong> — completes conditionally</td>
+              <td class="text-left" rowspan="1" colspan="1">Session layer only; must compose with token revocation and API key revocation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>SAML 2.0 Single Logout</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">ACCEPTABLE — completes command</td>
-              <td class="text-left" rowspan="1" colspan="1">Session layer only — must compose with token revocation and API key revocation</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>ACCEPTABLE</strong> — completes command (back-channel SOAP binding)</td>
+              <td class="text-left" rowspan="1" colspan="1">Session layer only; must compose with token revocation and API key revocation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>OAuth Token Revocation (RFC 7009)</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Not applicable</td>
-              <td class="text-left" rowspan="1" colspan="1">Token layer only — must compose with session invalidation</td>
+              <td class="text-left" rowspan="1" colspan="1">Token layer only; must compose with session invalidation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>OAuth Global Token Revocation</strong>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Not applicable</td>
-              <td class="text-left" rowspan="1" colspan="1">Token layer only — must compose with session invalidation</td>
+              <td class="text-left" rowspan="1" colspan="1">Token layer only; must compose with session invalidation</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
@@ -3525,10 +3481,11 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         </h3>
 <p id="section-6.1-1">A single protocol can fully complete this command.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
 <p id="section-6.1-2"><strong>Primary (RECOMMENDED):</strong>
-- OP Commands (<code>reestablish</code>)
 - OIDC Back-Channel Logout<a href="#section-6.1-2" class="pilcrow">¶</a></p>
-<p id="section-6.1-3"><strong>Fallback (ACCEPTABLE):</strong>
-- SAML 2.0 SLO (back-channel SOAP binding)<a href="#section-6.1-3" class="pilcrow">¶</a></p>
+<p id="section-6.1-3"><strong>When Adopted (PROPOSED — see Appendix C):</strong>
+- OP Commands (<code>reestablish</code>): completes the command in a single protocol exchange once formally registered<a href="#section-6.1-3" class="pilcrow">¶</a></p>
+<p id="section-6.1-4"><strong>Fallback (ACCEPTABLE):</strong>
+- SAML 2.0 SLO (back-channel SOAP binding)<a href="#section-6.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="rec-revoke">
@@ -3537,11 +3494,11 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-invalidate-authentication-stat" class="section-name selfRef">Invalidate Authentication State (SL2 REQUIRED)</a>
         </h3>
 <p id="section-6.2-1"><strong>Primary (RECOMMENDED):</strong>
-- OP Commands (<code>invalidate</code>) — completes the command in a single protocol exchange<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+- OP Commands (<code>invalidate</code>): completes the command in a single protocol exchange<a href="#section-6.2-1" class="pilcrow">¶</a></p>
 <p id="section-6.2-2"><strong>Legacy Coverage (ACCEPTABLE):</strong><a href="#section-6.2-2" class="pilcrow">¶</a></p>
 <p id="section-6.2-3">When OP Commands is not available, implementations MUST compose protocols to achieve full coverage:<a href="#section-6.2-3" class="pilcrow">¶</a></p>
-<table class="center" id="table-27">
-          <caption><a href="#table-27" class="selfRef">Table 27</a></caption>
+<table class="center" id="table-26">
+          <caption><a href="#table-26" class="selfRef">Table 26</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Layer</th>
@@ -3578,9 +3535,9 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         <h3 id="name-on-demand-invalidation">
 <a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-on-demand-invalidation" class="section-name selfRef">On-Demand Invalidation</a>
         </h3>
-<p id="section-7.1-1">RPs that can invalidate self-contained access tokens immediately upon receiving an Invalidate Authentication State command — for example, via revocation lists, status lists, or event-driven invalidation (CAEP/SSF) — are not subject to the maximum TTL constraints in Section 7.2.<a href="#section-7.1-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-28">
-          <caption><a href="#table-28" class="selfRef">Table 28</a></caption>
+<p id="section-7.1-1">RPs that can invalidate self-contained access tokens immediately upon receiving an Invalidate Authentication State command (for example, via revocation lists, status lists <span>[<a href="#TokenStatusList" class="cite xref">TokenStatusList</a>]</span>, or event-driven invalidation (CAEP/SSF)) are not subject to the maximum TTL constraints in Section 7.2.<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-27">
+          <caption><a href="#table-27" class="selfRef">Table 27</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Strategy</th>
@@ -3593,19 +3550,19 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Revocation lists / status lists</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Strong — near-immediate</td>
+              <td class="text-left" rowspan="1" colspan="1">Strong. Near-immediate</td>
               <td class="text-left" rowspan="1" colspan="1">RS must fetch and check list (operational complexity)</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <strong>Event-driven invalidation</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Strong — near-immediate</td>
+              <td class="text-left" rowspan="1" colspan="1">Strong. Near-immediate</td>
               <td class="text-left" rowspan="1" colspan="1">RS must subscribe to events (CAEP/SSF)</td>
             </tr>
           </tbody>
         </table>
-<p id="section-7.1-3">RPs that implement on-demand invalidation <strong>MUST</strong> invalidate self-contained access tokens within a reasonable time frame upon receiving the command.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
+<p id="section-7.1-3">RPs that implement on-demand invalidation <strong>MUST</strong> invalidate self-contained access tokens within an implementation-defined latency appropriate to the deployment's risk tolerance. In practice, invalidation SHOULD complete within seconds of receiving the command.<a href="#section-7.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="jwt-max-ttl">
@@ -3614,8 +3571,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-maximum-token-lifetime" class="section-name selfRef">Maximum Token Lifetime</a>
         </h3>
 <p id="section-7.2-1">When the RP <strong>cannot</strong> invalidate self-contained access tokens on demand, the token lifetime is the sole control bounding the exposure window. In this case, self-contained access tokens <strong>MUST</strong> comply with the following maximum lifetime constraints:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-29">
-          <caption><a href="#table-29" class="selfRef">Table 29</a></caption>
+<table class="center" id="table-28">
+          <caption><a href="#table-28" class="selfRef">Table 28</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">IPSIE Level</th>
@@ -3644,7 +3601,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
             </tr>
           </tbody>
         </table>
-<p id="section-7.2-3">The <code>exp</code> claim in a self-contained access token <strong>MUST NOT</strong> exceed the maximum TTL for the applicable IPSIE level, measured from the <code>iat</code> claim. Authorization Servers <strong>MUST</strong> enforce these limits at token issuance.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
+<p id="section-7.2-3">The <code>exp</code> claim in a self-contained access token <strong>MUST NOT</strong> exceed the maximum TTL for the applicable IPSIE level, measured from the <code>iat</code> claim. When the RP operates its own Authorization Server, that Authorization Server <strong>MUST</strong> enforce these limits at token issuance.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
 <p id="section-7.2-4">For "Invalidate Authentication State," implementers <strong>SHOULD</strong> implement on-demand invalidation (Section 7.1) rather than relying solely on token expiry.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -3660,19 +3617,22 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
           <p id="section-8-1.1.1"><strong>Transport security:</strong> All protocol messages <strong>MUST</strong> use TLS 1.2 or higher.<a href="#section-8-1.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-8-1.2">
-          <p id="section-8-1.2.1"><strong>Message integrity:</strong> Lifecycle commands <strong>MUST</strong> be authenticated (signed, MAC'd, or over authenticated channel).<a href="#section-8-1.2.1" class="pilcrow">¶</a></p>
+          <p id="section-8-1.2.1"><strong>Message integrity:</strong> Lifecycle commands <strong>MUST</strong> be authenticated (signed, MAC'd, or delivered over an authenticated channel). For OP Commands, the Command Token MUST be a signed JWT verified against the Identity Service's JWKS.<a href="#section-8-1.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-8-1.3">
-          <p id="section-8-1.3.1"><strong>Replay protection:</strong> Lifecycle commands <strong>SHOULD</strong> include nonces or timestamps.<a href="#section-8-1.3.1" class="pilcrow">¶</a></p>
+          <p id="section-8-1.3.1"><strong>Replay protection:</strong> Lifecycle commands <strong>MUST</strong> include a <code>jti</code> (JWT ID) claim and an <code>exp</code> claim. RPs <strong>SHOULD</strong> reject commands with expired <code>exp</code> or duplicate <code>jti</code> values within a reasonable window.<a href="#section-8-1.3.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-8-1.4">
-          <p id="section-8-1.4.1"><strong>Authorization:</strong> RPs <strong>MUST</strong> verify that lifecycle commands originate from the trusted IdP.<a href="#section-8-1.4.1" class="pilcrow">¶</a></p>
+          <p id="section-8-1.4.1"><strong>Sender authorization:</strong> RPs <strong>MUST</strong> verify that lifecycle commands originate from a trusted Identity Service (e.g., by validating the <code>iss</code> claim against known Identity Service metadata and verifying the signature against the Identity Service's JWKS).<a href="#section-8-1.4.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-8-1.5">
-          <p id="section-8-1.5.1"><strong>Fail-secure:</strong> When command type is ambiguous or unknown, RPs <strong>SHOULD</strong> default to the more restrictive command (Invalidate Authentication State).<a href="#section-8-1.5.1" class="pilcrow">¶</a></p>
+          <p id="section-8-1.5.1"><strong>Command endpoint protection:</strong> RP command endpoints <strong>MUST</strong> be protected against unauthorized access. Endpoints <strong>SHOULD</strong> implement rate limiting to reduce the risk of denial-of-service via command flooding.<a href="#section-8-1.5.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-8-1.6">
-          <p id="section-8-1.6.1"><strong>Enforcement gaps:</strong> Browser-dependent mechanisms (Front-Channel Logout, front-channel SAML SLO) may fail silently. Implementers <strong>SHOULD</strong> prefer back-channel mechanisms.<a href="#section-8-1.6.1" class="pilcrow">¶</a></p>
+          <p id="section-8-1.6.1"><strong>Fail-secure:</strong> When a command type is unknown or cannot be parsed, RPs <strong>SHOULD</strong> default to the more restrictive behavior (treat as Invalidate Authentication State). Note that this fail-secure behavior could itself be a denial-of-service vector if an attacker can submit malformed commands; RPs <strong>MUST</strong> enforce sender authorization before applying fail-secure defaults.<a href="#section-8-1.6.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-8-1.7">
+          <p id="section-8-1.7.1"><strong>Enforcement gaps:</strong> Browser-dependent mechanisms (Front-Channel Logout, front-channel SAML SLO) may fail silently if the browser is closed or third-party cookies are blocked. Implementers <strong>SHOULD</strong> prefer back-channel mechanisms for security-critical commands.<a href="#section-8-1.7.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 </section>
@@ -3700,6 +3660,10 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         <dd>
 <span class="refAuthor">Lodderstedt, T., Ed.</span>, <span class="refAuthor">Dronia, S.</span>, and <span class="refAuthor">M. Scurtescu</span>, <span class="refTitle">"OAuth 2.0 Token Revocation"</span>, <span class="seriesInfo">RFC 7009</span>, <span class="seriesInfo">DOI 10.17487/RFC7009</span>, <time datetime="2013-08" class="refDate">August 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7009">https://www.rfc-editor.org/info/rfc7009</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="OP-Commands">[OP-Commands]</dt>
+        <dd>
+<span class="refAuthor">Hardt, D.</span> and <span class="refAuthor">K. McGuinness</span>, <span class="refTitle">"OpenID Provider Commands 1.0"</span>, <time datetime="2025-09" class="refDate">September 2025</time>, <span>&lt;<a href="https://openid.net/specs/openid-provider-commands-1_0.html">https://openid.net/specs/openid-provider-commands-1_0.html</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="OIDC.Core">[OIDC.Core]</dt>
         <dd>
 <span class="refAuthor">Sakimura, N.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Medeiros, B. de.</span>, and <span class="refAuthor">C. Mortimore</span>, <span class="refTitle">"OpenID Connect Core 1.0"</span>, <time datetime="2023-12" class="refDate">December 2023</time>, <span>&lt;<a href="https://openid.net/specs/openid-connect-core-1_0.html">https://openid.net/specs/openid-connect-core-1_0.html</a>&gt;</span>. </dd>
@@ -3714,23 +3678,23 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <dd class="break"></dd>
 <dt id="SAML2.Core">[SAML2.Core]</dt>
         <dd>
-<span class="refAuthor">Cantor, S.</span>, <span class="refAuthor">Kemp, J.</span>, <span class="refAuthor">Philpott, R.</span>, and <span class="refAuthor">E. Maler</span>, <span class="refTitle">"Assertions and Protocols for the OASIS Security Assertion Markup Language (SAML) V2.0"</span>, <time datetime="2005-03" class="refDate">March 2005</time>, <span>&lt;<a href="http://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf">http://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf</a>&gt;</span>. </dd>
+<span class="refAuthor">Cantor, S.</span>, <span class="refAuthor">Kemp, J.</span>, <span class="refAuthor">Philpott, R.</span>, and <span class="refAuthor">E. Maler</span>, <span class="refTitle">"Assertions and Protocols for the OASIS Security Assertion Markup Language (SAML) V2.0"</span>, <time datetime="2005-03" class="refDate">March 2005</time>, <span>&lt;<a href="https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf">https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="SAML2.Profiles">[SAML2.Profiles]</dt>
         <dd>
-<span class="refAuthor">Hughes, J.</span>, <span class="refTitle">"Profiles for the OASIS Security Assertion Markup Language (SAML) V2.0"</span>, <time datetime="2005-03" class="refDate">March 2005</time>, <span>&lt;<a href="http://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf">http://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf</a>&gt;</span>. </dd>
+<span class="refAuthor">Hughes, J.</span>, <span class="refTitle">"Profiles for the OASIS Security Assertion Markup Language (SAML) V2.0"</span>, <time datetime="2005-03" class="refDate">March 2005</time>, <span>&lt;<a href="https://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf">https://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="NIST.SP.800-63-3">[NIST.SP.800-63-3]</dt>
+<dt id="NIST.SP.800-63-4">[NIST.SP.800-63-4]</dt>
         <dd>
-<span class="refAuthor">Grassi, P.A.</span>, <span class="refTitle">"Digital Identity Guidelines"</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://pages.nist.gov/800-63-3/sp800-63-3.html">https://pages.nist.gov/800-63-3/sp800-63-3.html</a>&gt;</span>. </dd>
+<span class="refAuthor">Temoshok, D.</span> and <span class="refAuthor">J.L. Fenton</span>, <span class="refTitle">"Digital Identity Guidelines"</span>, <time datetime="2024-08" class="refDate">August 2024</time>, <span>&lt;<a href="https://pages.nist.gov/800-63-4/">https://pages.nist.gov/800-63-4/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="NIST.SP.800-63B">[NIST.SP.800-63B]</dt>
         <dd>
-<span class="refAuthor">Grassi, P.A.</span>, <span class="refAuthor">Newton, E.M.</span>, <span class="refAuthor">Perlner, R.A.</span>, and <span class="refAuthor">A.R. Regenscheid</span>, <span class="refTitle">"Digital Identity Guidelines: Authentication and Lifecycle Management"</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://pages.nist.gov/800-63-3/sp800-63b.html">https://pages.nist.gov/800-63-3/sp800-63b.html</a>&gt;</span>. </dd>
+<span class="refAuthor">Temoshok, D.</span> and <span class="refAuthor">J.L. Fenton</span>, <span class="refTitle">"Digital Identity Guidelines: Authentication and Lifecycle Management"</span>, <time datetime="2024-08" class="refDate">August 2024</time>, <span>&lt;<a href="https://pages.nist.gov/800-63-4/sp800-63b/">https://pages.nist.gov/800-63-4/sp800-63b/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="NIST.SP.800-63C">[NIST.SP.800-63C]</dt>
       <dd>
-<span class="refAuthor">Grassi, P.A.</span>, <span class="refTitle">"Digital Identity Guidelines: Federation and Assertions"</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://pages.nist.gov/800-63-3/sp800-63c.html">https://pages.nist.gov/800-63-3/sp800-63c.html</a>&gt;</span>. </dd>
+<span class="refAuthor">Temoshok, D.</span> and <span class="refAuthor">J.L. Fenton</span>, <span class="refTitle">"Digital Identity Guidelines: Federation and Assertions"</span>, <time datetime="2024-08" class="refDate">August 2024</time>, <span>&lt;<a href="https://pages.nist.gov/800-63-4/sp800-63c/">https://pages.nist.gov/800-63-4/sp800-63c/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
 </section>
@@ -3741,10 +3705,6 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <a href="#section-9.2" class="section-number selfRef">9.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
         </h3>
 <dl class="references">
-<dt id="OP-Commands">[OP-Commands]</dt>
-        <dd>
-<span class="refAuthor">Jones, M.</span>, <span class="refTitle">"OpenID Provider Commands"</span>, <span>n.d.</span>, <span>&lt;<a href="https://openid.net/specs/openid-provider-commands-1_0.html">https://openid.net/specs/openid-provider-commands-1_0.html</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 <dt id="CAEP">[CAEP]</dt>
         <dd>
 <span class="refAuthor">Backman, A.</span>, <span class="refTitle">"Continuous Access Evaluation Protocol (CAEP)"</span>, <span>n.d.</span>, <span>&lt;<a href="https://openid.net/specs/openid-caep-1_0.html">https://openid.net/specs/openid-caep-1_0.html</a>&gt;</span>. </dd>
@@ -3754,8 +3714,12 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 <span class="refAuthor">Backman, A.</span>, <span class="refTitle">"Shared Signals Framework"</span>, <span>n.d.</span>, <span>&lt;<a href="https://openid.net/specs/sharedsignals-framework-1_0.html">https://openid.net/specs/sharedsignals-framework-1_0.html</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="GlobalTokenRevocation">[GlobalTokenRevocation]</dt>
+        <dd>
+<span class="refAuthor">Parecki, A.</span>, <span class="refTitle">"Global Token Revocation"</span>, <time datetime="2024-09" class="refDate">September 2024</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-parecki-oauth-global-token-revocation/">https://datatracker.ietf.org/doc/draft-parecki-oauth-global-token-revocation/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="TokenStatusList">[TokenStatusList]</dt>
       <dd>
-<span class="refAuthor">Lodderstedt, T.</span>, <span class="refTitle">"OAuth 2.0 Global Token Revocation"</span>, <span>n.d.</span>. </dd>
+<span class="refAuthor">Looker, T.</span> and <span class="refAuthor">P. Kasselman</span>, <span class="refTitle">"OAuth 2.0 Token Status List"</span>, <span>n.d.</span>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
 </section>
@@ -3825,8 +3789,8 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
 </li>
       </ul>
 <p id="appendix-A-5">The authentication artifacts managed by the SaaS Application include:<a href="#appendix-A-5" class="pilcrow">¶</a></p>
-<table class="center" id="table-30">
-        <caption><a href="#table-30" class="selfRef">Table 30</a></caption>
+<table class="center" id="table-29">
+        <caption><a href="#table-29" class="selfRef">Table 29</a></caption>
 <thead>
           <tr>
             <th class="text-left" rowspan="1" colspan="1">Artifact</th>
@@ -3862,7 +3826,7 @@ All authentication artifacts — sessions, tokens, and API keys — have been in
         <h3 id="name-command-effects-on-this-dep">
 <a href="#appendix-A.1" class="section-number selfRef">A.1. </a><a href="#name-command-effects-on-this-dep" class="section-name selfRef">Command Effects on This Deployment</a>
         </h3>
-<p id="appendix-A.1-1"><strong>Reestablish Session</strong> — IdP sends <code>reestablish</code>:<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.1-1"><strong>Reestablish Session:</strong> IdP sends <code>reestablish</code>:<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-ascii-art art-text artwork" id="appendix-A.1-2">
 <pre>
 IdP --reestablish--&gt; SaaS Application (RP)
@@ -3873,8 +3837,8 @@ IdP --reestablish--&gt; SaaS Application (RP)
                          +-- API keys ................... unchanged
 </pre><a href="#appendix-A.1-2" class="pilcrow">¶</a>
 </div>
-<p id="appendix-A.1-3">All of the user's interactive sessions are expired. First-party clients holding valid access tokens or refresh tokens continue to operate. Background API integrations using API keys are unaffected. The user must complete a full authentication at the IdP — where the IdP re-evaluates policy, risk, and state — to establish a new session.<a href="#appendix-A.1-3" class="pilcrow">¶</a></p>
-<p id="appendix-A.1-4"><strong>Invalidate Authentication State</strong> — IdP sends <code>invalidate</code>:<a href="#appendix-A.1-4" class="pilcrow">¶</a></p>
+<p id="appendix-A.1-3">All of the user's interactive sessions are expired. First-party clients holding valid access tokens or refresh tokens continue to operate. Background API integrations using API keys are unaffected. The user must complete a full authentication at the IdP, where the IdP re-evaluates policy, risk, and state, to establish a new session.<a href="#appendix-A.1-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.1-4"><strong>Invalidate Authentication State:</strong> IdP sends <code>invalidate</code>:<a href="#appendix-A.1-4" class="pilcrow">¶</a></p>
 <div class="alignLeft art-ascii-art art-text artwork" id="appendix-A.1-5">
 <pre>
 IdP --invalidate--&gt; SaaS Application (RP)
@@ -3904,11 +3868,11 @@ IdP --invalidate--&gt; SaaS Application (RP)
 <div id="impl-bcl">
 <section id="appendix-B.1">
         <h3 id="name-oidc-back-channel-logout-rp">
-<a href="#appendix-B.1" class="section-number selfRef">B.1. </a><a href="#name-oidc-back-channel-logout-rp" class="section-name selfRef">OIDC Back-Channel Logout — RP Implementation</a>
+<a href="#appendix-B.1" class="section-number selfRef">B.1. </a><a href="#name-oidc-back-channel-logout-rp" class="section-name selfRef">OIDC Back-Channel Logout: RP Implementation</a>
         </h3>
 <ol start="1" type="1" class="normal type-1" id="appendix-B.1-1">
 <li id="appendix-B.1-1.1">
-            <p id="appendix-B.1-1.1.1">Validate the Logout Token signature against IdP JWKS<a href="#appendix-B.1-1.1.1" class="pilcrow">¶</a></p>
+            <p id="appendix-B.1-1.1.1">Validate the Logout Token signature against Identity Service JWKS<a href="#appendix-B.1-1.1.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.1-1.2">
             <p id="appendix-B.1-1.2.1">Verify <code>iss</code>, <code>aud</code>, <code>iat</code>, and <code>events</code> claims<a href="#appendix-B.1-1.2.1" class="pilcrow">¶</a></p>
@@ -3917,7 +3881,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
             <p id="appendix-B.1-1.3.1">Look up local session(s) by <code>sub</code> and/or <code>sid</code><a href="#appendix-B.1-1.3.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.1-1.4">
-            <p id="appendix-B.1-1.4.1">Expire matching RP client sessions<a href="#appendix-B.1-1.4.1" class="pilcrow">¶</a></p>
+            <p id="appendix-B.1-1.4.1">Terminate matching RP client sessions (Logout transition; sessions are no longer accepted; do NOT revoke OAuth tokens)<a href="#appendix-B.1-1.4.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.1-1.5">
             <p id="appendix-B.1-1.5.1">On next user interaction, trigger Forced Reauthentication (see Section 3.3)<a href="#appendix-B.1-1.5.1" class="pilcrow">¶</a></p>
@@ -3928,7 +3892,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
 <div id="impl-saml-slo">
 <section id="appendix-B.2">
         <h3 id="name-saml-20-single-logout-sp-im">
-<a href="#appendix-B.2" class="section-number selfRef">B.2. </a><a href="#name-saml-20-single-logout-sp-im" class="section-name selfRef">SAML 2.0 Single Logout — SP Implementation (Back-Channel SOAP)</a>
+<a href="#appendix-B.2" class="section-number selfRef">B.2. </a><a href="#name-saml-20-single-logout-sp-im" class="section-name selfRef">SAML 2.0 Single Logout: SP Implementation (Back-Channel SOAP)</a>
         </h3>
 <ol start="1" type="1" class="normal type-1" id="appendix-B.2-1">
 <li id="appendix-B.2-1.1">
@@ -3941,7 +3905,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
             <p id="appendix-B.2-1.3.1">Look up local session by <code>NameID</code> and <code>SessionIndex</code><a href="#appendix-B.2-1.3.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.2-1.4">
-            <p id="appendix-B.2-1.4.1">Expire matching session<a href="#appendix-B.2-1.4.1" class="pilcrow">¶</a></p>
+            <p id="appendix-B.2-1.4.1">Terminate matching session (Logout transition; session is no longer accepted; do NOT revoke OAuth tokens)<a href="#appendix-B.2-1.4.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.2-1.5">
             <p id="appendix-B.2-1.5.1">Return <code>&lt;LogoutResponse&gt;</code> with <code>Success</code> status<a href="#appendix-B.2-1.5.1" class="pilcrow">¶</a></p>
@@ -3955,32 +3919,33 @@ IdP --invalidate--&gt; SaaS Application (RP)
 <div id="impl-op-reestablish">
 <section id="appendix-B.3">
         <h3 id="name-openid-provider-commands-ree">
-<a href="#appendix-B.3" class="section-number selfRef">B.3. </a><a href="#name-openid-provider-commands-ree" class="section-name selfRef">OpenID Provider Commands: <code>reestablish</code> — RP Implementation</a>
+<a href="#appendix-B.3" class="section-number selfRef">B.3. </a><a href="#name-openid-provider-commands-ree" class="section-name selfRef">OpenID Provider Commands <code>reestablish</code>: RP Implementation</a>
         </h3>
-<ol start="1" type="1" class="normal type-1" id="appendix-B.3-1">
-<li id="appendix-B.3-1.1">
-            <p id="appendix-B.3-1.1.1">Validate Command Token signature against IdP JWKS<a href="#appendix-B.3-1.1.1" class="pilcrow">¶</a></p>
+<p id="appendix-B.3-1"><strong>Note:</strong> The <code>reestablish</code> command type is a proposed extension to <span>[<a href="#OP-Commands" class="cite xref">OP-Commands</a>]</span>. See Appendix C.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="appendix-B.3-2">
+<li id="appendix-B.3-2.1">
+            <p id="appendix-B.3-2.1.1">Validate Command Token signature against Identity Service JWKS<a href="#appendix-B.3-2.1.1" class="pilcrow">¶</a></p>
 </li>
-          <li id="appendix-B.3-1.2">
-            <p id="appendix-B.3-1.2.1">Verify <code>typ</code> is <code>command+jwt</code><a href="#appendix-B.3-1.2.1" class="pilcrow">¶</a></p>
+          <li id="appendix-B.3-2.2">
+            <p id="appendix-B.3-2.2.1">Verify <code>typ</code> is <code>command+jwt</code><a href="#appendix-B.3-2.2.1" class="pilcrow">¶</a></p>
 </li>
-          <li id="appendix-B.3-1.3">
-            <p id="appendix-B.3-1.3.1">Verify <code>iss</code>, <code>aud</code>, <code>iat</code>, <code>exp</code>, <code>jti</code>, and <code>command</code> claims<a href="#appendix-B.3-1.3.1" class="pilcrow">¶</a></p>
+          <li id="appendix-B.3-2.3">
+            <p id="appendix-B.3-2.3.1">Verify <code>iss</code>, <code>aud</code>, <code>iat</code>, <code>exp</code>, <code>jti</code>, and <code>command</code> claims<a href="#appendix-B.3-2.3.1" class="pilcrow">¶</a></p>
 </li>
-          <li id="appendix-B.3-1.4">
-            <p id="appendix-B.3-1.4.1">Confirm <code>command</code> value is <code>reestablish</code><a href="#appendix-B.3-1.4.1" class="pilcrow">¶</a></p>
+          <li id="appendix-B.3-2.4">
+            <p id="appendix-B.3-2.4.1">Confirm <code>command</code> value is <code>reestablish</code><a href="#appendix-B.3-2.4.1" class="pilcrow">¶</a></p>
 </li>
-          <li id="appendix-B.3-1.5">
-            <p id="appendix-B.3-1.5.1">Look up all sessions by <code>sub</code> (and <code>tenant</code> if applicable)<a href="#appendix-B.3-1.5.1" class="pilcrow">¶</a></p>
+          <li id="appendix-B.3-2.5">
+            <p id="appendix-B.3-2.5.1">Look up all sessions by <code>sub</code> (and <code>tenant</code> if applicable)<a href="#appendix-B.3-2.5.1" class="pilcrow">¶</a></p>
 </li>
-          <li id="appendix-B.3-1.6">
-            <p id="appendix-B.3-1.6.1">Expire all matching RP client sessions<a href="#appendix-B.3-1.6.1" class="pilcrow">¶</a></p>
+          <li id="appendix-B.3-2.6">
+            <p id="appendix-B.3-2.6.1">Suspend all matching RP client sessions (sessions are no longer accepted)<a href="#appendix-B.3-2.6.1" class="pilcrow">¶</a></p>
 </li>
-          <li id="appendix-B.3-1.7">
-            <p id="appendix-B.3-1.7.1">Return success response<a href="#appendix-B.3-1.7.1" class="pilcrow">¶</a></p>
+          <li id="appendix-B.3-2.7">
+            <p id="appendix-B.3-2.7.1">Return success response<a href="#appendix-B.3-2.7.1" class="pilcrow">¶</a></p>
 </li>
-          <li id="appendix-B.3-1.8">
-            <p id="appendix-B.3-1.8.1">On next user interaction, trigger Forced Reauthentication (see Section 3.3)<a href="#appendix-B.3-1.8.1" class="pilcrow">¶</a></p>
+          <li id="appendix-B.3-2.8">
+            <p id="appendix-B.3-2.8.1">On next user interaction, trigger Forced Reauthentication (see Section 3.3)<a href="#appendix-B.3-2.8.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
 </section>
@@ -3988,11 +3953,11 @@ IdP --invalidate--&gt; SaaS Application (RP)
 <div id="impl-op-invalidate">
 <section id="appendix-B.4">
         <h3 id="name-openid-provider-commands-inv">
-<a href="#appendix-B.4" class="section-number selfRef">B.4. </a><a href="#name-openid-provider-commands-inv" class="section-name selfRef">OpenID Provider Commands: <code>invalidate</code> — RP Implementation</a>
+<a href="#appendix-B.4" class="section-number selfRef">B.4. </a><a href="#name-openid-provider-commands-inv" class="section-name selfRef">OpenID Provider Commands <code>invalidate</code>: RP Implementation</a>
         </h3>
 <ol start="1" type="1" class="normal type-1" id="appendix-B.4-1">
 <li id="appendix-B.4-1.1">
-            <p id="appendix-B.4-1.1.1">Validate Command Token signature against IdP JWKS<a href="#appendix-B.4-1.1.1" class="pilcrow">¶</a></p>
+            <p id="appendix-B.4-1.1.1">Validate Command Token signature against Identity Service JWKS<a href="#appendix-B.4-1.1.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.4-1.2">
             <p id="appendix-B.4-1.2.1">Verify <code>typ</code> is <code>command+jwt</code><a href="#appendix-B.4-1.2.1" class="pilcrow">¶</a></p>
@@ -4007,7 +3972,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
             <p id="appendix-B.4-1.5.1">Look up all sessions by <code>sub</code> (and <code>tenant</code> if applicable)<a href="#appendix-B.4-1.5.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.4-1.6">
-            <p id="appendix-B.4-1.6.1">Expire all matching RP client sessions<a href="#appendix-B.4-1.6.1" class="pilcrow">¶</a></p>
+            <p id="appendix-B.4-1.6.1">Terminate all matching RP client sessions (sessions are no longer accepted)<a href="#appendix-B.4-1.6.1" class="pilcrow">¶</a></p>
 </li>
           <li id="appendix-B.4-1.7">
             <p id="appendix-B.4-1.7.1">Invalidate all existing access tokens for the subject<a href="#appendix-B.4-1.7.1" class="pilcrow">¶</a></p>
@@ -4035,17 +4000,16 @@ IdP --invalidate--&gt; SaaS Application (RP)
       <h2 id="name-suggested-protocol-extensio">
 <a href="#appendix-C" class="section-number selfRef">Appendix C. </a><a href="#name-suggested-protocol-extensio" class="section-name selfRef">Suggested Protocol Extensions</a>
       </h2>
-<p id="appendix-C-1">The following extensions would improve the ability to implement these commands with clear semantics and guaranteed enforcement. These are suggestions for future standardization work.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
-<p id="appendix-C-2"><strong>Note:</strong> The <code>reestablish</code> OP Command type is used normatively throughout this specification as the recommended protocol mapping for the Reestablish Session command. This appendix proposes its formal registration with the OP Commands specification.<a href="#appendix-C-2" class="pilcrow">¶</a></p>
+<p id="appendix-C-1">The following extensions would improve the ability to implement these commands with clear semantics and guaranteed enforcement. These are proposals for future standardization work submitted to the relevant working groups.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
 <div id="ext-op-reestablish">
 <section id="appendix-C.1">
         <h3 id="name-openid-provider-commands-rees">
 <a href="#appendix-C.1" class="section-number selfRef">C.1. </a><a href="#name-openid-provider-commands-rees" class="section-name selfRef">OpenID Provider Commands: <code>reestablish</code> Command Registration</a>
         </h3>
-<p id="appendix-C.1-1"><strong>Problem:</strong> The OP Commands specification defines <code>invalidate</code> but does not define a session reestablishment command. The <code>invalidate</code> command implies full authentication revocation, which is too broad for the Reestablish Session use case where the IdP wants to revalidate access without invalidating tokens and API keys.<a href="#appendix-C.1-1" class="pilcrow">¶</a></p>
-<p id="appendix-C.1-2"><strong>Proposed Registration:</strong> Register <code>reestablish</code> as a new OP Command type.<a href="#appendix-C.1-2" class="pilcrow">¶</a></p>
-<table class="center" id="table-31">
-          <caption><a href="#table-31" class="selfRef">Table 31</a></caption>
+<p id="appendix-C.1-1"><strong>Problem:</strong> The OP Commands specification (<span>[<a href="#OP-Commands" class="cite xref">OP-Commands</a>]</span>) defines <code>invalidate</code> but does not define a session reestablishment command. The <code>invalidate</code> command implies full authentication state revocation, which is too broad for the Reestablish Session use case where the Identity Service wants to revalidate access without invalidating tokens and API keys.<a href="#appendix-C.1-1" class="pilcrow">¶</a></p>
+<p id="appendix-C.1-2"><strong>Proposed Registration:</strong> Register <code>reestablish</code> as a new OP Command type in <span>[<a href="#OP-Commands" class="cite xref">OP-Commands</a>]</span>.<a href="#appendix-C.1-2" class="pilcrow">¶</a></p>
+<table class="center" id="table-30">
+          <caption><a href="#table-30" class="selfRef">Table 30</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Field</th>
@@ -4065,7 +4029,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Description</td>
-              <td class="text-left" rowspan="1" colspan="1">Require the RP to expire the subject's session and reestablish it through a full authentication at the IdP. The IdP re-evaluates policy, risk, and state to determine whether to grant continued access. The RP MUST NOT revoke OAuth tokens or API keys.</td>
+              <td class="text-left" rowspan="1" colspan="1">Require the RP to mark the subject's sessions as Invalid and reestablish them through a full authentication at the Identity Service. The Identity Service re-evaluates policy, risk, and state to determine whether to grant continued access. The RP MUST NOT revoke OAuth tokens or API keys.</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Required claims</td>
@@ -4080,9 +4044,9 @@ IdP --invalidate--&gt; SaaS Application (RP)
           </tbody>
         </table>
 <p id="appendix-C.1-4"><strong>Relationship to <code>invalidate</code>:</strong><a href="#appendix-C.1-4" class="pilcrow">¶</a></p>
-<p id="appendix-C.1-5">The <code>invalidate</code> command is a <strong>strict superset</strong> of <code>reestablish</code> — it performs all <code>reestablish</code> steps plus token invalidation and API key revocation.<a href="#appendix-C.1-5" class="pilcrow">¶</a></p>
-<table class="center" id="table-32">
-          <caption><a href="#table-32" class="selfRef">Table 32</a></caption>
+<p id="appendix-C.1-5">The <code>invalidate</code> command is a <strong>strict superset</strong> of <code>reestablish</code>. It performs all <code>reestablish</code> steps plus token invalidation and API key revocation.<a href="#appendix-C.1-5" class="pilcrow">¶</a></p>
+<table class="center" id="table-31">
+          <caption><a href="#table-31" class="selfRef">Table 31</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">OP Command</th>
@@ -4098,7 +4062,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
                 <code>reestablish</code>
 </td>
               <td class="text-left" rowspan="1" colspan="1">Reestablish Session</td>
-              <td class="text-left" rowspan="1" colspan="1">Expire + reestablish</td>
+              <td class="text-left" rowspan="1" colspan="1">Invalid + reestablish</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
               <td class="text-left" rowspan="1" colspan="1">Unchanged</td>
             </tr>
@@ -4121,7 +4085,7 @@ IdP --invalidate--&gt; SaaS Application (RP)
         <h3 id="name-caep-enforcement-profile-fo">
 <a href="#appendix-C.2" class="section-number selfRef">C.2. </a><a href="#name-caep-enforcement-profile-fo" class="section-name selfRef">CAEP: Enforcement Profile for Session Lifecycle</a>
         </h3>
-<p id="appendix-C.2-1"><strong>Problem:</strong> CAEP events are informational by default. An IdP cannot mandate that an RP act on a <code>session-revoked</code> event.<a href="#appendix-C.2-1" class="pilcrow">¶</a></p>
+<p id="appendix-C.2-1"><strong>Problem:</strong> CAEP events are informational by default. An Identity Service cannot mandate that an RP act on a <code>session-revoked</code> event.<a href="#appendix-C.2-1" class="pilcrow">¶</a></p>
 <p id="appendix-C.2-2"><strong>Suggested Extension:</strong> Define an enforcement profile that:<a href="#appendix-C.2-2" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="appendix-C.2-3">
 <li id="appendix-C.2-3.1">
@@ -4134,8 +4098,8 @@ IdP --invalidate--&gt; SaaS Application (RP)
             <p id="appendix-C.2-3.3.1">Requires the receiver to report enforcement status<a href="#appendix-C.2-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
-<table class="center" id="table-33">
-          <caption><a href="#table-33" class="selfRef">Table 33</a></caption>
+<table class="center" id="table-32">
+          <caption><a href="#table-32" class="selfRef">Table 32</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">CAEP Event</th>
@@ -4146,28 +4110,35 @@ IdP --invalidate--&gt; SaaS Application (RP)
           <tbody>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
-                <code>session-revoked</code> (reason: <code>logout</code>, <code>timeout</code>, <code>policy-change</code>)</td>
+                <code>session-revoked</code> (reason: <code>logout</code>)</td>
+              <td class="text-left" rowspan="1" colspan="1">Logout</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <strong>MUST</strong> terminate RP session (tokens preserved); Forced Reauthentication required</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
+                <code>session-revoked</code> (reason: <code>timeout</code>, <code>policy-change</code>)</td>
               <td class="text-left" rowspan="1" colspan="1">Reestablish Session</td>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>MUST</strong> expire RP session and require reestablishment</td>
+                <strong>MUST</strong> mark RP session Invalid and require reestablishment</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
                 <code>session-revoked</code> (reason: <code>policy-violation</code>, <code>compromise</code>)</td>
               <td class="text-left" rowspan="1" colspan="1">Invalidate Authentication State</td>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>MUST</strong> invalidate session and tokens, and revoke API keys</td>
+                <strong>MUST</strong> terminate session, invalidate tokens, and revoke API keys</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
-                <code>credential-change</code>
-</td>
+                <code>credential-change</code> (change type: <code>revoke</code>)</td>
               <td class="text-left" rowspan="1" colspan="1">Invalidate Authentication State</td>
               <td class="text-left" rowspan="1" colspan="1">
-                <strong>MUST</strong> invalidate session and tokens, and revoke API keys</td>
+                <strong>MUST</strong> terminate session, invalidate tokens, and revoke API keys</td>
             </tr>
           </tbody>
         </table>
+<p id="appendix-C.2-5"><strong>Note on <code>credential-change</code> mapping:</strong> Only <code>credential-change</code> events with a change type of <code>revoke</code> map to Invalidate Authentication State. Routine credential changes (e.g., password updates or MFA device additions with change type <code>create</code> or <code>update</code>) do NOT mandate this command; the Identity Service's policy determines whether such events warrant access revalidation.<a href="#appendix-C.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
