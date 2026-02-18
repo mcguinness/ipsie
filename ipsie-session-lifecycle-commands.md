@@ -843,33 +843,39 @@ Both commands are **REQUIRED at SL2**. The following table summarizes which comm
 
 Implementations conforming to **SL2** MUST support at least one protocol or protocol combination that **fully completes** each command.
 
+The SSO protocol in use determines which logout protocol is applicable. OIDC Back-Channel Logout and SAML 2.0 Single Logout are **mutually exclusive** — an RP uses the logout protocol that matches its SSO federation protocol. SAML SLO is not a fallback for BCL; they serve the same role in their respective protocol stacks.
+
 ## Reestablish Session (SL2 REQUIRED) {#rec-reestablish}
 
 A single protocol can fully complete this command.
 
-**Primary (RECOMMENDED):**
+**If SSO is OIDC (RECOMMENDED):**
 - OIDC Back-Channel Logout
 
-**When Adopted (PROPOSED — see Appendix C):**
-- OP Commands (`reestablish`): completes the command in a single protocol exchange once formally registered
-
-**Fallback (ACCEPTABLE):**
+**If SSO is SAML (ACCEPTABLE):**
 - SAML 2.0 SLO (back-channel SOAP binding)
+
+**When Adopted (RECOMMENDED — see Appendix C and Section 4.1.4):**
+- OP Commands (`reestablish`): completes the command in a single protocol exchange, independent of SSO protocol
+- Shared Signals (CAEP `session-revoked`): 1:1 equivalent to OP Commands (`reestablish`) via SSF delivery; independent of SSO protocol; preferred when an SSF stream is already established
 
 ## Invalidate Access (SL2 REQUIRED) {#rec-revoke}
 
 **Primary (RECOMMENDED):**
-- OP Commands (`invalidate`): completes the command in a single protocol exchange
+- OP Commands (`invalidate`): completes the command in a single protocol exchange, independent of SSO protocol
+
+**When Adopted (RECOMMENDED — see Section 4.2.4):**
+- Shared Signals (CAEP `access_revoked`): 1:1 equivalent to OP Commands (`invalidate`) via SSF delivery; independent of SSO protocol; preferred when an SSF stream is already established. If both `reestablish` and `access_revoked` proposals are adopted, a single SSF stream covers both commands.
 
 **Legacy Coverage (ACCEPTABLE):**
 
-When OP Commands is not available, implementations MUST compose protocols to achieve full coverage:
+When neither OP Commands nor Shared Signals `access_revoked` is available, implementations MUST compose protocols to achieve full coverage. The session layer protocol depends on the SSO protocol in use:
 
-| Layer | Protocol |
-|-------|----------|
-| RP session | OIDC Back-Channel Logout (RP must additionally invalidate tokens and revoke API keys) |
-| IdP session | IdP-side logout (automatic) |
-| AS-side token revocation | OAuth Token Revocation (RFC 7009) or OAuth Global Token Revocation |
+| Layer | If SSO is OIDC | If SSO is SAML |
+|-------|---------------|----------------|
+| RP session | OIDC Back-Channel Logout | SAML 2.0 SLO (back-channel SOAP) |
+| IdP session | IdP-side logout (automatic) | IdP-side logout (automatic) |
+| AS-side token revocation | OAuth Token Revocation (RFC 7009) or OAuth Global Token Revocation | OAuth Token Revocation (RFC 7009) or OAuth Global Token Revocation |
 
 
 # Self-Contained JWT Access Token Considerations {#jwt-tokens}
