@@ -602,28 +602,45 @@ The RP **SHOULD NOT** publish `credential-change` events for Reestablish Session
 
 ### Invalidate Access Events {#caep-invalidate}
 
-After processing an Invalidate Access command, the RP **SHOULD** publish:
+After processing an Invalidate Access command, the RP **SHOULD** publish an `access_revoked` event. This specification proposes `access_revoked` as a new CAEP event type to represent the full scope of the Invalidate Access command: all sessions terminated, all tokens invalidated, and all API keys revoked atomically. A single event is preferable to composing `session-revoked` and multiple `credential-change` events because it allows receivers to understand the complete revocation atomically without correlating multiple signals.
 
-| CAEP Event | URI | Purpose |
-|------------|-----|---------|
-| **Session Revoked** | `https://schemas.openid.net/secevent/caep/event-type/session-revoked` | Notify the ecosystem that the subject's RP client session has been terminated |
-| **Credential Change** | `https://schemas.openid.net/secevent/caep/event-type/credential-change` | Notify the ecosystem that tokens and API keys for the subject have been invalidated or revoked |
+**Proposed Event URI:** `https://schemas.openid.net/secevent/caep/event-type/access-revoked`
 
-The RP **SHOULD** include the following claims in the `session-revoked` event:
+**Status:** This event type is a **proposed extension** to the CAEP specification and is not yet formally registered. Implementers should treat the URI and claim structure as subject to change pending registration.
 
-- `sub`: The subject whose session was terminated
-- `reason_admin`: Indicate the security context (e.g., `"Authentication state invalidated by Identity Service command"`)
-- `event_timestamp`: The time at which the RP terminated the session
+**Event claims:**
 
-The RP **SHOULD** publish separate `credential-change` events for each credential type affected:
+| Claim | Required | Description |
+|-------|----------|-------------|
+| `subject` | REQUIRED | The subject whose access was revoked (format: `iss_sub` or `opaque`) |
+| `event_timestamp` | REQUIRED | The time at which the RP completed the revocation |
+| `initiating_entity` | RECOMMENDED | Who triggered the revocation: `policy` (Identity Service command), `admin`, or `system` |
+| `reason_admin` | RECOMMENDED | Human-readable reason (e.g., `"Invalidate Access command received from Identity Service"`) |
 
-| Credential type | Change type | Description |
-|-----------------|-------------|-------------|
-| `access_token` | `revoke` | Access tokens invalidated |
-| `refresh_token` | `revoke` | Refresh tokens invalidated |
-| `api_key` | `revoke` | API keys revoked |
+**Example event payload:**
 
-**Note on credential types:** The `access_token` and `refresh_token` credential types are defined in the CAEP specification. The `api_key` credential type is a **proposed extension** not yet registered in the CAEP specification; implementers should treat this as subject to change pending formal registration.
+~~~ json
+{
+  "iss": "https://rp.example.com",
+  "iat": 1234567890,
+  "jti": "abc123xyz",
+  "aud": "https://receiver.example.com",
+  "events": {
+    "https://schemas.openid.net/secevent/caep/event-type/access-revoked": {
+      "subject": {
+        "format": "iss_sub",
+        "iss": "https://idp.example.com",
+        "sub": "user@example.com"
+      },
+      "initiating_entity": "policy",
+      "reason_admin": "Invalidate Access command received from Identity Service",
+      "event_timestamp": 1234567890
+    }
+  }
+}
+~~~
+
+**Fallback:** Until `access_revoked` is formally registered, RPs **MAY** publish `session-revoked` (with `reason_admin` indicating full access revocation) together with `credential-change` (`revoke`) events as a fallback. Receivers that support `access_revoked` **MUST** treat it as equivalent to receiving both signals simultaneously.
 
 ## Command Processing Semantics {#command-semantics}
 
@@ -817,7 +834,9 @@ Both commands are **REQUIRED at SL2**. The following table summarizes which comm
 | **SAML 2.0 Single Logout** | **ACCEPTABLE** — completes command (back-channel SOAP binding) | Session layer only; must compose with token revocation and API key revocation |
 | **OAuth Token Revocation (RFC 7009)** | Not applicable | Token layer only; must compose with session invalidation |
 | **OAuth Global Token Revocation** | Not applicable | Token layer only; must compose with session invalidation |
-| **Shared Signals (CAEP)** | Not applicable | Supplementary notification only |
+| **Shared Signals (CAEP)** | **PROPOSED** — completes command via `session-revoked` when adopted (see Section 4.1.4) | **PROPOSED** — completes command via `access_revoked` when adopted (see Section 4.2.4) |
+
+**Note on Shared Signals:** If both CAEP proposals are adopted — `session-revoked` for Reestablish Session and `access_revoked` for Invalidate Access — the Shared Signals Framework can serve as the delivery mechanism for both lifecycle commands. This enables a single SSF stream to carry the full range of Identity Service-initiated session lifecycle events to RPs.
 
 
 # Recommended Protocol Combinations {#recommendations}
@@ -1088,6 +1107,9 @@ The RP **MUST** treat `reestablish` and `invalidate` as distinct commands with d
 | `session-revoked` (reason: `timeout`, `policy-change`) | Reestablish Session | **MUST** expire RP session and require reestablishment with Forced Reauthentication |
 | `session-revoked` (reason: `policy-violation`, `compromise`) | Invalidate Access | **MUST** terminate session, invalidate tokens, and revoke API keys |
 | `credential-change` (change type: `revoke`) | Invalidate Access | **MUST** terminate session, invalidate tokens, and revoke API keys |
+| `access-revoked` (**proposed**) | Invalidate Access | **MUST** terminate session, invalidate tokens, and revoke API keys; preferred over composing `session-revoked` + `credential-change` |
+
+**Note on `access-revoked`:** This event type is a proposed CAEP extension defined in Section 4.2.4. Receivers that recognize `access-revoked` **MUST** treat it as equivalent to `session-revoked` (reason: `policy-violation`) combined with `credential-change` (change type: `revoke`) for all artifact types.
 
 **Note on `credential-change` mapping:** Only `credential-change` events with a change type of `revoke` map to Invalidate Access. Routine credential changes (e.g., password updates or MFA device additions with change type `create` or `update`) do NOT mandate this command; the Identity Service's policy determines whether such events warrant access revalidation.
 
