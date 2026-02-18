@@ -128,7 +128,7 @@ This specification defines two lifecycle commands that an Identity Service can s
 
 In federated single sign-on deployments, an Identity Service authenticates subjects and issues assertions to Relying Parties (RPs). Once a session is established at the RP, the RP operates independently — it may continue accepting that session long after conditions at the Identity Service have changed. This creates a gap: the Identity Service has no reliable way to require the RP to stop relying on a prior authentication and check back before allowing continued access.
 
-This specification closes that gap by defining **two lifecycle commands** that an Identity Service can send to an RP at any time to control the federated session lifecycle:
+This specification closes that gap by defining **two lifecycle commands** through which the Identity Service exercises its role as **Session Authority** (see Section 2) over sessions derived from its assertions:
 
 These commands affect **session validity and the continued acceptability of prior authentication artifacts**. They do **not** affect roles, permissions, entitlements, or authorization policy within the RP.
 
@@ -185,6 +185,9 @@ The server that issues access tokens and refresh tokens to a client after succes
 
 **Expire**
 To end the validity of an artifact (session, token, assertion) so that it is no longer accepted. Expiration may occur naturally when a time-based validity period ends (e.g., an assertion's `exp` claim at SL1). Expiration is a normal lifecycle event, not an indication of a security incident. {{RFC6749}} §1.5, {{OIDC.Core}} §3.1.3.7 (`exp` claim)
+
+**Session Authority**
+The Identity Service that issued the original assertion establishing the subject's session at the RP. As session authority, the Identity Service retains the right to require the RP to revalidate or terminate sessions derived from its assertions, which is the role that the commands defined in this specification exercise. When a subject authenticates via federation, the RP records the session authority's issuer identifier and the subject's identifier (`sub` in OIDC; `NameID` in SAML), and optionally the session identifier (`sid`). These values identify which Identity Service is the session authority for the subject and enable the RP to redirect the subject directly to the correct Identity Service without requiring IdP discovery. The session authority relationship is cleared when the session is terminated. {{OIDC.Core}} §2 (`iss`, `sub`, `sid`), {{SAML2.Core}} §2.4
 
 **Identity Provider (IdP)**
 The entity that authenticates subjects and issues assertions to Relying Parties. Also referred to as OpenID Provider (OP) in OIDC and Identity Provider (IdP) in SAML. {{OIDC.Core}} §1.2, {{SAML2.Core}} §2.2
@@ -253,7 +256,7 @@ The IdP and RP manage sessions independently of each other. The federation proto
                              |                                   |
                              v                                   |
                     +-------------------+                        |
-         +--------->|    Establish      |                        |
+         +--------->|    Established    |                        |
          |          +-------------------+                        |
          |                   |                                   |
          |          (session established)                        |
@@ -270,7 +273,7 @@ The IdP and RP manage sessions independently of each other. The federation proto
          |       |             |               |                  |
          +-------+-------------+               +------------------+
        (subject returns                   (subject returns
-        to Establish)                      to Unauthenticated)
+        to Established)                      to Unauthenticated)
 ~~~
 
 The lifecycle defines four progressive levels of Identity Service control over RP sessions:
@@ -287,7 +290,7 @@ The lifecycle defines four progressive levels of Identity Service control over R
 **Unauthenticated:**
 No session exists for the subject at the RP. The subject has not yet authenticated or all prior authentication state has been terminated. This is the initial state and the return state after Terminated. {{NIST.SP.800-63B}} §7.1
 
-**Establish:**
+**Established:**
 The RP has initiated a federation transaction. The subject is redirected to the IdP for authentication. The authentication intent (Session Continuation, Step-Up Authentication, or Forced Reauthentication) depends on how the subject arrived at this state (see Section 3.6). The IdP authenticates the subject (or satisfies the request from an existing session when the authentication intent permits), issues an assertion (an OIDC ID Token or SAML `<Assertion>`), and delivers it to the RP. The RP validates the assertion (signature, issuer, audience, freshness), establishes a local RP client session bound to the assertion, and MAY issue OAuth access tokens and refresh tokens to first-party clients. The subject MAY create API keys. These artifacts collectively form the subject's **authentication state** at the RP. If any validation step fails, the subject remains Unauthenticated. {{NIST.SP.800-63C}} §5–6, {{OIDC.Core}} §3.1.2, {{SAML2.Core}} §3.4, {{NIST.SP.800-63B}} §7.1
 
 **Active:**
@@ -299,10 +302,10 @@ The subject's RP client sessions are no longer valid due to time-based expiry. E
 - **Inactivity timeout:** No subscriber activity within the configured timeout period {{NIST.SP.800-63B}} §7.2
 - **Absolute timeout:** Maximum session duration reached regardless of activity {{NIST.SP.800-63B}} §7.2
 
-Tokens and API keys remain valid. The subject returns to the Establish state, where the IdP may satisfy the request via **Session Continuation** (reusing the existing IdP session) or **Step-Up Authentication** if the IdP's policy requires it. **Forced Reauthentication** may also be used but is not required. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access. {{OIDC.Core}} §3.1.3.7
+Tokens and API keys remain valid. The RP retains the session authority (see Section 2), so it can redirect the subject directly to the known Identity Service without requiring IdP discovery. The subject returns to the Established state, where the IdP may satisfy the request via **Session Continuation** (reusing the existing IdP session) or **Step-Up Authentication** if the IdP's policy requires it. **Forced Reauthentication** may also be used but is not required. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access. {{OIDC.Core}} §3.1.3.7
 
 **Invalid:**
-The subject's RP client sessions are no longer accepted. Tokens and API keys remain valid. The subject MUST return to the Establish state via **Forced Reauthentication**. Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 3.3 for Forced Reauthentication requirements.
+The subject's RP client sessions are no longer accepted. Tokens and API keys remain valid. The RP retains the session authority (see Section 2), so it can redirect the subject directly to the known Identity Service without requiring IdP discovery. The subject MUST return to the Established state via **Forced Reauthentication**. Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 3.3 for Forced Reauthentication requirements.
 
 A session may be marked Invalid by the **Reestablish Session** command from the Identity Service, or by RP-specific mechanisms such as account lockout, account recovery, administrative action, or risk-based policy enforcement. This specification defines the Identity Service-initiated trigger; RP-specific triggers are outside the scope of this specification but produce the same logical state.
 
@@ -313,21 +316,21 @@ The subject's RP client session is terminated and the subject must re-authentica
 
 - **Invalidate Authentication State** command (SL2): The most severe level of Identity Service control, indicating a security event. All authentication artifacts (sessions, tokens, and API keys) are invalidated or revoked. Prior authentication artifacts MUST NOT be trusted.
 
-In both cases the subject returns to the Unauthenticated state and must proceed through Establish via **Forced Reauthentication**. {{NIST.SP.800-63B}} §7.1
+In both cases the session authority is cleared (see Section 2). The subject returns to the Unauthenticated state and may need to repeat IdP discovery before authenticating again. {{NIST.SP.800-63B}} §7.1
 
 ## Session State Transitions {#session-transitions}
 
 | From | To | Trigger | Notes |
 |------|----|---------|-------|
-| Unauthenticated | Establish | Subject accesses protected resource | RP initiates federation transaction |
-| Establish | Active | Assertion validated, session created | RP creates session, issues tokens |
-| Establish | Unauthenticated | Assertion validation fails | No session created |
+| Unauthenticated | Established | Subject accesses protected resource | RP initiates federation transaction |
+| Established | Active | Assertion validated, session created | RP creates session, issues tokens |
+| Established | Unauthenticated | Assertion validation fails | No session created |
 | Active | Expired | Inactivity timeout or absolute timeout | Time-based triggers (SL1) |
 | Active | Invalid | **Reestablish Session** command | Identity Service-initiated access revalidation (SL2) |
 | Active | Terminated | Logout (user, admin, policy, or system-initiated) | Subject cannot resume session; Forced Reauthentication required |
 | Active | Terminated | **Invalidate Authentication State** command | Identity Service-initiated security operation; all artifacts invalidated (SL2) |
-| Expired | Establish | Subject requests access | Session Continuation, Step-Up, or Forced Reauthentication |
-| Invalid | Establish | Subject requests access | Forced Reauthentication ONLY |
+| Expired | Established | Subject requests access | Session Continuation, Step-Up, or Forced Reauthentication |
+| Invalid | Established | Subject requests access | Forced Reauthentication ONLY |
 | Terminated | Unauthenticated | *(immediate — all artifacts invalidated)* | Subject must start fresh via Unauthenticated |
 
 ## Progressive IdP Control {#session-progressive-control}
@@ -343,7 +346,8 @@ The Identity Service has four progressive levels of control over RP sessions:
 | **API keys** | Unchanged | Unchanged | Unchanged | Revoked |
 | **Authentication intent** | Session Continuation, Step-Up, or Forced Reauthentication | Forced Reauthentication only | Forced Reauthentication only | Forced Reauthentication only |
 | **IdP session** | May still be valid | MAY be terminated | MUST require new authentication ceremony; MAY use existing session context | Invalidated |
-| **Returns to** | Establish | Unauthenticated | Establish | Unauthenticated |
+| **Session authority** | Known; IdP discovery not required | Cleared; IdP discovery may be required | Known; IdP discovery not required | Cleared; IdP discovery may be required |
+| **Returns to** | Established | Unauthenticated | Established | Unauthenticated |
 | **IPSIE level** | SL1+ | SL1+ | SL2+ | SL2+ |
 
 # Authentication Intents {#auth-intents}
@@ -482,7 +486,7 @@ When no command has been received (for example, when the RP's local session has 
 
 ## Authentication Intent Requirements by Session State {#session-auth-intents}
 
-The authentication intent used when the subject returns to the Establish state depends on the prior session state and how it was reached.
+The authentication intent used when the subject returns to the Established state depends on the prior session state and how it was reached.
 
 | Prior Session State | Trigger | Allowed Authentication Intents | Rationale |
 |--------------------|---------|------------------------------|-----------|

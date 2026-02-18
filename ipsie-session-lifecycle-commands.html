@@ -1528,7 +1528,7 @@ li > p:last-of-type:only-child {
 <a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
       </h2>
 <p id="section-1-1">In federated single sign-on deployments, an Identity Service authenticates subjects and issues assertions to Relying Parties (RPs). Once a session is established at the RP, the RP operates independently — it may continue accepting that session long after conditions at the Identity Service have changed. This creates a gap: the Identity Service has no reliable way to require the RP to stop relying on a prior authentication and check back before allowing continued access.<a href="#section-1-1" class="pilcrow">¶</a></p>
-<p id="section-1-2">This specification closes that gap by defining <strong>two lifecycle commands</strong> that an Identity Service can send to an RP at any time to control the federated session lifecycle:<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-2">This specification closes that gap by defining <strong>two lifecycle commands</strong> through which the Identity Service exercises its role as <strong>Session Authority</strong> (see Section 2) over sessions derived from its assertions:<a href="#section-1-2" class="pilcrow">¶</a></p>
 <p id="section-1-3">These commands affect <strong>session validity and the continued acceptability of prior authentication artifacts</strong>. They do <strong>not</strong> affect roles, permissions, entitlements, or authorization policy within the RP.<a href="#section-1-3" class="pilcrow">¶</a></p>
 <table class="center" id="table-1">
         <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
@@ -1647,44 +1647,46 @@ A statement from an Identity Provider to a Relying Party that conveys informatio
 The server that issues access tokens and refresh tokens to a client after successfully authenticating the resource owner and obtaining authorization. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.1<a href="#section-1.3-7" class="pilcrow">¶</a></p>
 <p id="section-1.3-8"><strong>Expire</strong>
 To end the validity of an artifact (session, token, assertion) so that it is no longer accepted. Expiration may occur naturally when a time-based validity period ends (e.g., an assertion's <code>exp</code> claim at SL1). Expiration is a normal lifecycle event, not an indication of a security incident. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.5, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.3.7 (<code>exp</code> claim)<a href="#section-1.3-8" class="pilcrow">¶</a></p>
-<p id="section-1.3-9"><strong>Identity Provider (IdP)</strong>
-The entity that authenticates subjects and issues assertions to Relying Parties. Also referred to as OpenID Provider (OP) in OIDC and Identity Provider (IdP) in SAML. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.2<a href="#section-1.3-9" class="pilcrow">¶</a></p>
-<p id="section-1.3-10"><strong>Forced Reauthentication</strong>
-An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new <code>auth_time</code>, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Authentication State commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-1.3-10" class="pilcrow">¶</a></p>
-<p id="section-1.3-11"><strong>Session Continuation</strong>
-An authentication intent in which the RP requests authentication and the IdP determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements. No new authentication event occurs. The IdP reuses the existing session and its authentication context (<code>auth_time</code>, <code>acr</code>, <code>amr</code>). Session Continuation is the normal flow when the RP needs to reestablish local application state (e.g., after local session expiry, cookie loss, or RP-local logout) without requiring fresh authentication. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3<a href="#section-1.3-11" class="pilcrow">¶</a></p>
-<p id="section-1.3-12"><strong>Step-Up Authentication</strong>
-An authentication intent in which the RP requires a higher level of assurance than is provided by the existing authentication session. The IdP evaluates whether the current authentication context satisfies the requested assurance and, if insufficient, requires additional authentication. The resulting authentication context reflects the updated assurance, including updated <code>acr</code>, <code>amr</code>, and <code>auth_time</code> as appropriate. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-1.3-12" class="pilcrow">¶</a></p>
-<p id="section-1.3-13"><strong>Refresh Token</strong>
-A credential issued by an Authorization Server that a client uses to obtain new access tokens without requiring the resource owner to reauthenticate. Refresh tokens are typically long-lived and revocable. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.5<a href="#section-1.3-13" class="pilcrow">¶</a></p>
-<p id="section-1.3-14"><strong>Relying Party (RP)</strong>
-The application or service that depends on the Identity Provider for authentication of subjects. Also referred to as Service Provider (SP) in SAML or Client in OAuth. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.2, <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §4<a href="#section-1.3-14" class="pilcrow">¶</a></p>
-<p id="section-1.3-15"><strong>Resource Server (RS)</strong>
-The server hosting protected resources, capable of accepting and responding to requests using access tokens. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.1<a href="#section-1.3-15" class="pilcrow">¶</a></p>
-<p id="section-1.3-16"><strong>Invalidate</strong>
-To render an artifact (token, session, API key, or authentication state) no longer valid or trustworthy, regardless of its remaining lifetime. Invalidation is an active security operation, typically in response to a security event. In this specification, "Invalidate Authentication State" denotes the Identity Service-initiated command to invalidate all prior authentication artifacts for a subject. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-1.3-16" class="pilcrow">¶</a></p>
-<p id="section-1.3-17"><strong>Logout</strong>
-An explicit action that terminates a subject's authenticated session at the RP, transitions the session to the <strong>Terminated</strong> state, and requires <strong>Forced Reauthentication</strong> before the subject can regain interactive access. Logout is distinct from time-based session expiry (which may allow Session Continuation) and from the Reestablish Session command (which marks the session Invalid without terminating it). Common forms include:<a href="#section-1.3-17" class="pilcrow">¶</a></p>
+<p id="section-1.3-9"><strong>Session Authority</strong>
+The Identity Service that issued the original assertion establishing the subject's session at the RP. As session authority, the Identity Service retains the right to require the RP to revalidate or terminate sessions derived from its assertions, which is the role that the commands defined in this specification exercise. When a subject authenticates via federation, the RP records the session authority's issuer identifier and the subject's identifier (<code>sub</code> in OIDC; <code>NameID</code> in SAML), and optionally the session identifier (<code>sid</code>). These values identify which Identity Service is the session authority for the subject and enable the RP to redirect the subject directly to the correct Identity Service without requiring IdP discovery. The session authority relationship is cleared when the session is terminated. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §2 (<code>iss</code>, <code>sub</code>, <code>sid</code>), <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.4<a href="#section-1.3-9" class="pilcrow">¶</a></p>
+<p id="section-1.3-10"><strong>Identity Provider (IdP)</strong>
+The entity that authenticates subjects and issues assertions to Relying Parties. Also referred to as OpenID Provider (OP) in OIDC and Identity Provider (IdP) in SAML. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.2<a href="#section-1.3-10" class="pilcrow">¶</a></p>
+<p id="section-1.3-11"><strong>Forced Reauthentication</strong>
+An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new <code>auth_time</code>, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Authentication State commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-1.3-11" class="pilcrow">¶</a></p>
+<p id="section-1.3-12"><strong>Session Continuation</strong>
+An authentication intent in which the RP requests authentication and the IdP determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements. No new authentication event occurs. The IdP reuses the existing session and its authentication context (<code>auth_time</code>, <code>acr</code>, <code>amr</code>). Session Continuation is the normal flow when the RP needs to reestablish local application state (e.g., after local session expiry, cookie loss, or RP-local logout) without requiring fresh authentication. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3<a href="#section-1.3-12" class="pilcrow">¶</a></p>
+<p id="section-1.3-13"><strong>Step-Up Authentication</strong>
+An authentication intent in which the RP requires a higher level of assurance than is provided by the existing authentication session. The IdP evaluates whether the current authentication context satisfies the requested assurance and, if insufficient, requires additional authentication. The resulting authentication context reflects the updated assurance, including updated <code>acr</code>, <code>amr</code>, and <code>auth_time</code> as appropriate. See Section 3 for the full definition of authentication intents. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-1.3-13" class="pilcrow">¶</a></p>
+<p id="section-1.3-14"><strong>Refresh Token</strong>
+A credential issued by an Authorization Server that a client uses to obtain new access tokens without requiring the resource owner to reauthenticate. Refresh tokens are typically long-lived and revocable. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.5<a href="#section-1.3-14" class="pilcrow">¶</a></p>
+<p id="section-1.3-15"><strong>Relying Party (RP)</strong>
+The application or service that depends on the Identity Provider for authentication of subjects. Also referred to as Service Provider (SP) in SAML or Client in OAuth. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.2, <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §4<a href="#section-1.3-15" class="pilcrow">¶</a></p>
+<p id="section-1.3-16"><strong>Resource Server (RS)</strong>
+The server hosting protected resources, capable of accepting and responding to requests using access tokens. <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> §1.1<a href="#section-1.3-16" class="pilcrow">¶</a></p>
+<p id="section-1.3-17"><strong>Invalidate</strong>
+To render an artifact (token, session, API key, or authentication state) no longer valid or trustworthy, regardless of its remaining lifetime. Invalidation is an active security operation, typically in response to a security event. In this specification, "Invalidate Authentication State" denotes the Identity Service-initiated command to invalidate all prior authentication artifacts for a subject. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-1.3-17" class="pilcrow">¶</a></p>
+<p id="section-1.3-18"><strong>Logout</strong>
+An explicit action that terminates a subject's authenticated session at the RP, transitions the session to the <strong>Terminated</strong> state, and requires <strong>Forced Reauthentication</strong> before the subject can regain interactive access. Logout is distinct from time-based session expiry (which may allow Session Continuation) and from the Reestablish Session command (which marks the session Invalid without terminating it). Common forms include:<a href="#section-1.3-18" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-1.3-18.1">
-            <p id="section-1.3-18.1.1"><strong>User-Initiated Logout:</strong> The subject explicitly requests to end their session (e.g., by clicking "Sign Out"). The RP session is terminated. OAuth access tokens, refresh tokens, and API keys are typically preserved, as the subject may have active background processes. The IdP SSO session MAY be terminated depending on whether the logout is propagated to the Identity Service via OIDC Logout or SAML SLO.<a href="#section-1.3-18.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="section-1.3-19.1">
+            <p id="section-1.3-19.1.1"><strong>User-Initiated Logout:</strong> The subject explicitly requests to end their session (e.g., by clicking "Sign Out"). The RP session is terminated. OAuth access tokens, refresh tokens, and API keys are typically preserved, as the subject may have active background processes. The IdP SSO session MAY be terminated depending on whether the logout is propagated to the Identity Service via OIDC Logout or SAML SLO.<a href="#section-1.3-19.1.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.3-18.2">
-            <p id="section-1.3-18.2.1"><strong>Admin-Initiated Logout:</strong> An administrator explicitly terminates the subject's session via a management portal or administrative action. The RP session is terminated. OAuth tokens and API keys MAY be preserved or revoked depending on administrative policy. The IdP SSO session SHOULD be terminated.<a href="#section-1.3-18.2.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.3-19.2">
+            <p id="section-1.3-19.2.1"><strong>Admin-Initiated Logout:</strong> An administrator explicitly terminates the subject's session via a management portal or administrative action. The RP session is terminated. OAuth tokens and API keys MAY be preserved or revoked depending on administrative policy. The IdP SSO session SHOULD be terminated.<a href="#section-1.3-19.2.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.3-18.3">
-            <p id="section-1.3-18.3.1"><strong>Policy or System-Initiated Logout:</strong> The Identity Service or RP terminates a session based on automated policy (e.g., idle timeout enforcement, compliance policy, device posture failure) rather than a direct user or admin action. Artifact scope depends on the policy that triggered the logout.<a href="#section-1.3-18.3.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.3-19.3">
+            <p id="section-1.3-19.3.1"><strong>Policy or System-Initiated Logout:</strong> The Identity Service or RP terminates a session based on automated policy (e.g., idle timeout enforcement, compliance policy, device posture failure) rather than a direct user or admin action. Artifact scope depends on the policy that triggered the logout.<a href="#section-1.3-19.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-1.3-19">In all cases, the subject must re-authenticate through the Identity Service before regaining interactive access. This re-authentication gives the Identity Service an opportunity to re-evaluate policy, risk, and account state before issuing a new assertion, the same access-revalidation opportunity provided by the Reestablish Session command. See Section 5.2 for how Logout protocols (OIDC Back-Channel Logout, OIDC Front-Channel Logout, SAML SLO) satisfy the Reestablish Session command contract.<a href="#section-1.3-19" class="pilcrow">¶</a></p>
-<p id="section-1.3-20"><strong>Revoke / Revocation</strong>
-The act of explicitly canceling a specific credential or token before its natural expiration, rendering it permanently unusable. Revocation is a specific form of invalidation applied to individual artifacts. <span>[<a href="#RFC7009" class="cite xref">RFC7009</a>]</span> §1<a href="#section-1.3-20" class="pilcrow">¶</a></p>
-<p id="section-1.3-21"><strong>Session</strong>
-A temporary, stateful security context that is established after a successful authentication event and allows a subject to continue accessing a system without reauthenticating for each request. Sessions are time-limited, context-bound, and revocable. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §15.5.1<a href="#section-1.3-21" class="pilcrow">¶</a></p>
-<p id="section-1.3-22"><strong>Single Sign-On (SSO)</strong>
-A mechanism that allows a subject to authenticate once at an Identity Provider and subsequently access multiple Relying Parties without reauthenticating at each one, for the duration of the IdP session. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3<a href="#section-1.3-22" class="pilcrow">¶</a></p>
-<p id="section-1.3-23"><strong>Subject</strong>
-The entity (user, device, or workload) whose identity is asserted by the Identity Provider. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §2 (<code>sub</code> claim), <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.4<a href="#section-1.3-23" class="pilcrow">¶</a></p>
+<p id="section-1.3-20">In all cases, the subject must re-authenticate through the Identity Service before regaining interactive access. This re-authentication gives the Identity Service an opportunity to re-evaluate policy, risk, and account state before issuing a new assertion, the same access-revalidation opportunity provided by the Reestablish Session command. See Section 5.2 for how Logout protocols (OIDC Back-Channel Logout, OIDC Front-Channel Logout, SAML SLO) satisfy the Reestablish Session command contract.<a href="#section-1.3-20" class="pilcrow">¶</a></p>
+<p id="section-1.3-21"><strong>Revoke / Revocation</strong>
+The act of explicitly canceling a specific credential or token before its natural expiration, rendering it permanently unusable. Revocation is a specific form of invalidation applied to individual artifacts. <span>[<a href="#RFC7009" class="cite xref">RFC7009</a>]</span> §1<a href="#section-1.3-21" class="pilcrow">¶</a></p>
+<p id="section-1.3-22"><strong>Session</strong>
+A temporary, stateful security context that is established after a successful authentication event and allows a subject to continue accessing a system without reauthenticating for each request. Sessions are time-limited, context-bound, and revocable. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §15.5.1<a href="#section-1.3-22" class="pilcrow">¶</a></p>
+<p id="section-1.3-23"><strong>Single Sign-On (SSO)</strong>
+A mechanism that allows a subject to authenticate once at an Identity Provider and subsequently access multiple Relying Parties without reauthenticating at each one, for the duration of the IdP session. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5.3<a href="#section-1.3-23" class="pilcrow">¶</a></p>
+<p id="section-1.3-24"><strong>Subject</strong>
+The entity (user, device, or workload) whose identity is asserted by the Identity Provider. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §2 (<code>sub</code> claim), <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §2.4<a href="#section-1.3-24" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1712,7 +1714,7 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
                              |                                   |
                              v                                   |
                     +-------------------+                        |
-         +---------&gt;|    Establish      |                        |
+         +---------&gt;|    Established    |                        |
          |          +-------------------+                        |
          |                   |                                   |
          |          (session established)                        |
@@ -1729,7 +1731,7 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
          |       |             |               |                  |
          +-------+-------------+               +------------------+
        (subject returns                   (subject returns
-        to Establish)                      to Unauthenticated)
+        to Established)                      to Unauthenticated)
 </pre><a href="#section-2.1-1" class="pilcrow">¶</a>
 </div>
 <p id="section-2.1-2">The lifecycle defines four progressive levels of Identity Service control over RP sessions:<a href="#section-2.1-2" class="pilcrow">¶</a></p>
@@ -1800,7 +1802,7 @@ The entity (user, device, or workload) whose identity is asserted by the Identit
         </h3>
 <p id="section-2.2-1"><strong>Unauthenticated:</strong>
 No session exists for the subject at the RP. The subject has not yet authenticated or all prior authentication state has been terminated. This is the initial state and the return state after Terminated. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-1" class="pilcrow">¶</a></p>
-<p id="section-2.2-2"><strong>Establish:</strong>
+<p id="section-2.2-2"><strong>Established:</strong>
 The RP has initiated a federation transaction. The subject is redirected to the IdP for authentication. The authentication intent (Session Continuation, Step-Up Authentication, or Forced Reauthentication) depends on how the subject arrived at this state (see Section 3.6). The IdP authenticates the subject (or satisfies the request from an existing session when the authentication intent permits), issues an assertion (an OIDC ID Token or SAML <code>&lt;Assertion&gt;</code>), and delivers it to the RP. The RP validates the assertion (signature, issuer, audience, freshness), establishes a local RP client session bound to the assertion, and MAY issue OAuth access tokens and refresh tokens to first-party clients. The subject MAY create API keys. These artifacts collectively form the subject's <strong>authentication state</strong> at the RP. If any validation step fails, the subject remains Unauthenticated. <span>[<a href="#NIST.SP.800-63C" class="cite xref">NIST.SP.800-63C</a>]</span> §5–6, <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.2, <span>[<a href="#SAML2.Core" class="cite xref">SAML2.Core</a>]</span> §3.4, <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-2" class="pilcrow">¶</a></p>
 <p id="section-2.2-3"><strong>Active:</strong>
 The subject has an established session and is accessing RP resources using the session, tokens, and API keys. The RP enforces session validity, token lifetime, and authorization policy. Token refresh operations extend API access without requiring reauthentication. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-2.2-3" class="pilcrow">¶</a></p>
@@ -1814,9 +1816,9 @@ The subject's RP client sessions are no longer valid due to time-based expiry. E
             <p id="section-2.2-5.2.1"><strong>Absolute timeout:</strong> Maximum session duration reached regardless of activity <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.2<a href="#section-2.2-5.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-2.2-6">Tokens and API keys remain valid. The subject returns to the Establish state, where the IdP may satisfy the request via <strong>Session Continuation</strong> (reusing the existing IdP session) or <strong>Step-Up Authentication</strong> if the IdP's policy requires it. <strong>Forced Reauthentication</strong> may also be used but is not required. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.3.7<a href="#section-2.2-6" class="pilcrow">¶</a></p>
+<p id="section-2.2-6">Tokens and API keys remain valid. The RP retains the session authority (see Section 2), so it can redirect the subject directly to the known Identity Service without requiring IdP discovery. The subject returns to the Established state, where the IdP may satisfy the request via <strong>Session Continuation</strong> (reusing the existing IdP session) or <strong>Step-Up Authentication</strong> if the IdP's policy requires it. <strong>Forced Reauthentication</strong> may also be used but is not required. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access. <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span> §3.1.3.7<a href="#section-2.2-6" class="pilcrow">¶</a></p>
 <p id="section-2.2-7"><strong>Invalid:</strong>
-The subject's RP client sessions are no longer accepted. Tokens and API keys remain valid. The subject MUST return to the Establish state via <strong>Forced Reauthentication</strong>. Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 3.3 for Forced Reauthentication requirements.<a href="#section-2.2-7" class="pilcrow">¶</a></p>
+The subject's RP client sessions are no longer accepted. Tokens and API keys remain valid. The RP retains the session authority (see Section 2), so it can redirect the subject directly to the known Identity Service without requiring IdP discovery. The subject MUST return to the Established state via <strong>Forced Reauthentication</strong>. Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 3.3 for Forced Reauthentication requirements.<a href="#section-2.2-7" class="pilcrow">¶</a></p>
 <p id="section-2.2-8">A session may be marked Invalid by the <strong>Reestablish Session</strong> command from the Identity Service, or by RP-specific mechanisms such as account lockout, account recovery, administrative action, or risk-based policy enforcement. This specification defines the Identity Service-initiated trigger; RP-specific triggers are outside the scope of this specification but produce the same logical state.<a href="#section-2.2-8" class="pilcrow">¶</a></p>
 <p id="section-2.2-9"><strong>Terminated:</strong>
 The subject's RP client session is terminated and the subject must re-authenticate through the Identity Service before regaining interactive access. This state is reached via two distinct triggers with different artifact scopes:<a href="#section-2.2-9" class="pilcrow">¶</a></p>
@@ -1828,7 +1830,7 @@ The subject's RP client session is terminated and the subject must re-authentica
             <p id="section-2.2-10.2.1"><strong>Invalidate Authentication State</strong> command (SL2): The most severe level of Identity Service control, indicating a security event. All authentication artifacts (sessions, tokens, and API keys) are invalidated or revoked. Prior authentication artifacts MUST NOT be trusted.<a href="#section-2.2-10.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-2.2-11">In both cases the subject returns to the Unauthenticated state and must proceed through Establish via <strong>Forced Reauthentication</strong>. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-11" class="pilcrow">¶</a></p>
+<p id="section-2.2-11">In both cases the session authority is cleared (see Section 2). The subject returns to the Unauthenticated state and may need to repeat IdP discovery before authenticating again. <span>[<a href="#NIST.SP.800-63B" class="cite xref">NIST.SP.800-63B</a>]</span> §7.1<a href="#section-2.2-11" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="session-transitions">
@@ -1849,18 +1851,18 @@ The subject's RP client session is terminated and the subject must re-authentica
           <tbody>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
-              <td class="text-left" rowspan="1" colspan="1">Establish</td>
+              <td class="text-left" rowspan="1" colspan="1">Established</td>
               <td class="text-left" rowspan="1" colspan="1">Subject accesses protected resource</td>
               <td class="text-left" rowspan="1" colspan="1">RP initiates federation transaction</td>
             </tr>
             <tr>
-              <td class="text-left" rowspan="1" colspan="1">Establish</td>
+              <td class="text-left" rowspan="1" colspan="1">Established</td>
               <td class="text-left" rowspan="1" colspan="1">Active</td>
               <td class="text-left" rowspan="1" colspan="1">Assertion validated, session created</td>
               <td class="text-left" rowspan="1" colspan="1">RP creates session, issues tokens</td>
             </tr>
             <tr>
-              <td class="text-left" rowspan="1" colspan="1">Establish</td>
+              <td class="text-left" rowspan="1" colspan="1">Established</td>
               <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
               <td class="text-left" rowspan="1" colspan="1">Assertion validation fails</td>
               <td class="text-left" rowspan="1" colspan="1">No session created</td>
@@ -1893,13 +1895,13 @@ The subject's RP client session is terminated and the subject must re-authentica
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Expired</td>
-              <td class="text-left" rowspan="1" colspan="1">Establish</td>
+              <td class="text-left" rowspan="1" colspan="1">Established</td>
               <td class="text-left" rowspan="1" colspan="1">Subject requests access</td>
               <td class="text-left" rowspan="1" colspan="1">Session Continuation, Step-Up, or Forced Reauthentication</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Invalid</td>
-              <td class="text-left" rowspan="1" colspan="1">Establish</td>
+              <td class="text-left" rowspan="1" colspan="1">Established</td>
               <td class="text-left" rowspan="1" colspan="1">Subject requests access</td>
               <td class="text-left" rowspan="1" colspan="1">Forced Reauthentication ONLY</td>
             </tr>
@@ -1998,11 +2000,20 @@ The subject's RP client session is terminated and the subject must re-authentica
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">
+                <strong>Session authority</strong>
+</td>
+              <td class="text-left" rowspan="1" colspan="1">Known; IdP discovery not required</td>
+              <td class="text-left" rowspan="1" colspan="1">Cleared; IdP discovery may be required</td>
+              <td class="text-left" rowspan="1" colspan="1">Known; IdP discovery not required</td>
+              <td class="text-left" rowspan="1" colspan="1">Cleared; IdP discovery may be required</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">
                 <strong>Returns to</strong>
 </td>
-              <td class="text-left" rowspan="1" colspan="1">Establish</td>
+              <td class="text-left" rowspan="1" colspan="1">Established</td>
               <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
-              <td class="text-left" rowspan="1" colspan="1">Establish</td>
+              <td class="text-left" rowspan="1" colspan="1">Established</td>
               <td class="text-left" rowspan="1" colspan="1">Unauthenticated</td>
             </tr>
             <tr>
@@ -2403,7 +2414,7 @@ The subject's RP client session is terminated and the subject must re-authentica
         <h3 id="name-authentication-intent-requi">
 <a href="#section-3.6" class="section-number selfRef">3.6. </a><a href="#name-authentication-intent-requi" class="section-name selfRef">Authentication Intent Requirements by Session State</a>
         </h3>
-<p id="section-3.6-1">The authentication intent used when the subject returns to the Establish state depends on the prior session state and how it was reached.<a href="#section-3.6-1" class="pilcrow">¶</a></p>
+<p id="section-3.6-1">The authentication intent used when the subject returns to the Established state depends on the prior session state and how it was reached.<a href="#section-3.6-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-9">
           <caption><a href="#table-9" class="selfRef">Table 9</a></caption>
 <thead>
