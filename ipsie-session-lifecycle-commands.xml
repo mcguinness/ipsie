@@ -25,7 +25,7 @@
       </address>
     </author>
 
-    <date year="2026" month="February" day="16"/>
+    <date year="2026" month="February" day="17"/>
 
     
     
@@ -36,7 +36,7 @@
 
 <?line 110?>
 
-<t>This specification defines two lifecycle commands that an Identity Provider (IdP) can send to a Relying Party (RP) to trigger access revalidation — requiring the RP to stop relying on a prior sign-in and obtain reauthentication from the IdP.</t>
+<t>This specification defines two lifecycle commands that an Identity Provider (IdP) can send to a Relying Party (RP) to manage federated session lifecycle — requiring the RP to reestablish a session through the IdP or to invalidate all authentication artifacts.</t>
 
 
 
@@ -53,7 +53,7 @@
 
 <section anchor="introduction"><name>Introduction</name>
 
-<t>This specification defines <strong>two lifecycle commands</strong> that an Identity Provider (IdP) can send to a Relying Party (RP) to trigger <strong>access revalidation</strong> — requiring the RP to stop relying on a prior sign-in and obtain reauthentication from the IdP.</t>
+<t>This specification defines <strong>two lifecycle commands</strong> that an Identity Provider (IdP) can send to a Relying Party (RP) to manage the <strong>federated session lifecycle</strong>.</t>
 
 <t>These commands affect <strong>session validity and the continued acceptability of prior authentication artifacts</strong>. They do <strong>not</strong> affect roles, permissions, entitlements, or authorization policy within the RP.</t>
 
@@ -61,14 +61,38 @@
       <ttcol align='left'>Command</ttcol>
       <ttcol align='left'>Scope</ttcol>
       <ttcol align='left'>Typical Trigger</ttcol>
-      <c><strong>Expire Session State</strong></c>
+      <c><strong>Reestablish Session</strong></c>
       <c>All RP client sessions for the subject</c>
-      <c>Logout, inactivity timeout, step-up</c>
+      <c>Policy change, risk signal, logout, session management</c>
       <c><strong>Invalidate Authentication State</strong></c>
       <c>All sessions, tokens, and API keys</c>
       <c>Account compromise, security incident</c>
 </texttable>
 
+<section anchor="lifecycle-levels"><name>IdP Control by IPSIE Level</name>
+
+<t>The commands enable progressively greater IdP control over RP sessions. At SL1, the IdP influences session lifetime only through assertion claims — the RP expires sessions when the validity period ends. At SL2, the IdP can send commands at any time to require session reestablishment or full invalidation of authentication artifacts. At SL3, the IdP and RP additionally exchange continuous state signals. The following table summarizes what each level accomplishes:</t>
+
+<texttable>
+      <ttcol align='left'>IPSIE Level</ttcol>
+      <ttcol align='left'>Session Termination Model</ttcol>
+      <ttcol align='left'>IdP Control</ttcol>
+      <ttcol align='left'>Artifact Scope</ttcol>
+      <c><strong>SL1</strong></c>
+      <c>Time-based only — RP expires session when assertion validity period ends or timeout occurs</c>
+      <c>None — IdP sets lifetime via assertion claims (<spanx style="verb">exp</spanx>, <spanx style="verb">NotOnOrAfter</spanx>)</c>
+      <c>Sessions only</c>
+      <c><strong>SL2</strong></c>
+      <c>Time-based + on-demand — IdP can require session reestablishment or full authentication state invalidation at any time</c>
+      <c>Direct — IdP sends Reestablish Session or Invalidate Authentication State commands to RP</c>
+      <c>Sessions, tokens, API keys</c>
+      <c><strong>SL3</strong></c>
+      <c>Time-based + on-demand + continuous — RP and IdP exchange state changes in real time via Shared Signals</c>
+      <c>Continuous — bidirectional communication of session, device, and risk state changes via CAEP/SSF</c>
+      <c>Sessions, tokens, API keys + continuous signals</c>
+</texttable>
+
+</section>
 <section anchor="level-mapping"><name>IPSIE Session Lifecycle Level Mapping</name>
 
 <t>The commands defined in this specification map to the <strong>IPSIE Session Lifecycle (SL) levels</strong> as follows:</t>
@@ -81,8 +105,8 @@
       <c><em>(Not applicable)</em></c>
       <c>Session lifetime set from assertion; RP expires session when validity period ends</c>
       <c><strong>SL2</strong></c>
-      <c><strong>Expire Session State</strong></c>
-      <c><strong>REQUIRED</strong> — RP MUST expire sessions on demand at IdP request (same RP behavior as SL1 expiry, but IdP-triggered rather than time-based)</c>
+      <c><strong>Reestablish Session</strong></c>
+      <c><strong>REQUIRED</strong> — RP MUST expire sessions on demand at IdP request and reestablish through the IdP, enabling access revalidation</c>
       <c><strong>SL2</strong></c>
       <c><strong>Invalidate Authentication State</strong></c>
       <c><strong>REQUIRED</strong> — RP MUST invalidate sessions and tokens, and revoke API keys at IdP request</c>
@@ -100,7 +124,7 @@
 <t><strong>SL2 conformance</strong> requires that:</t>
 
 <t><list style="symbols">
-  <t>The <strong>Identity Service</strong> MUST be able to send both Expire Session State and Invalidate Authentication State commands to Applications</t>
+  <t>The <strong>Identity Service</strong> MUST be able to send both Reestablish Session and Invalidate Authentication State commands to Applications</t>
   <t>The <strong>Application</strong> MUST process and enforce both commands as defined in this specification</t>
   <t>The <strong>Application</strong> MUST NOT accept unsolicited federation assertions (e.g., SAML IdP-initiated SSO)</t>
   <t>The <strong>Identity Service</strong> MUST enforce authentication method requests from the Application</t>
@@ -138,13 +162,19 @@ A statement from an Identity Provider to a Relying Party that conveys informatio
 The server that issues access tokens and refresh tokens to a client after successfully authenticating the resource owner and obtaining authorization. <xref target="RFC6749"/> §1.1</t>
 
 <t><strong>Expire</strong>
-To end the validity of an artifact (session, token, assertion) so that it is no longer accepted. Expiration may occur naturally when a time-based validity period ends (e.g., an assertion's <spanx style="verb">exp</spanx> claim at SL1), or on demand when requested by the IdP (the Expire Session State command at SL2). In both cases, expiration is a normal lifecycle event, not an indication of a security incident. <xref target="RFC6749"/> §1.5, <xref target="OIDC.Core"/> §3.1.3.7 (<spanx style="verb">exp</spanx> claim)</t>
+To end the validity of an artifact (session, token, assertion) so that it is no longer accepted. Expiration may occur naturally when a time-based validity period ends (e.g., an assertion's <spanx style="verb">exp</spanx> claim at SL1). Expiration is a normal lifecycle event, not an indication of a security incident. <xref target="RFC6749"/> §1.5, <xref target="OIDC.Core"/> §3.1.3.7 (<spanx style="verb">exp</spanx> claim)</t>
 
 <t><strong>Identity Provider (IdP)</strong>
 The entity that authenticates subjects and issues assertions to Relying Parties. Also referred to as OpenID Provider (OP) in OIDC and Identity Provider (IdP) in SAML. <xref target="OIDC.Core"/> §1.2, <xref target="SAML2.Core"/> §2.2</t>
 
-<t><strong>Reauthentication</strong>
-The process of confirming the subscriber's continued presence and intent by performing a new primary authentication event at the Identity Provider, rather than relying on an existing session. Reauthentication is triggered when a prior authentication is no longer sufficient due to session expiry, security policy, or risk events. <xref target="NIST.SP.800-63B"/> §7.2</t>
+<t><strong>Forced Reauthentication</strong>
+An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new <spanx style="verb">auth_time</spanx>, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Authentication State commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. <xref target="NIST.SP.800-63B"/> §7.2</t>
+
+<t><strong>Session Continuation</strong>
+An authentication intent in which the RP requests authentication and the IdP determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements. No new authentication event occurs — the IdP reuses the existing session and its authentication context (<spanx style="verb">auth_time</spanx>, <spanx style="verb">acr</spanx>, <spanx style="verb">amr</spanx>). Session Continuation is the normal flow when the RP needs to reestablish local application state (e.g., after local session expiry, cookie loss, or RP-local logout) without requiring fresh authentication. See Section 3 for the full definition of authentication intents. <xref target="NIST.SP.800-63C"/> §5.3</t>
+
+<t><strong>Step-Up Authentication</strong>
+An authentication intent in which the RP requires a higher level of assurance than is provided by the existing authentication session. The IdP evaluates whether the current authentication context satisfies the requested assurance and, if insufficient, requires additional authentication. The resulting authentication context reflects the updated assurance, including updated <spanx style="verb">acr</spanx>, <spanx style="verb">amr</spanx>, and <spanx style="verb">auth_time</spanx> as appropriate. See Section 3 for the full definition of authentication intents. <xref target="NIST.SP.800-63B"/> §7.2</t>
 
 <t><strong>Refresh Token</strong>
 A credential issued by an Authorization Server that a client uses to obtain new access tokens without requiring the resource owner to reauthenticate. Refresh tokens are typically long-lived and revocable. <xref target="RFC6749"/> §1.5</t>
@@ -171,137 +201,474 @@ A mechanism that allows a subject to authenticate once at an Identity Provider a
 The entity (user, device, or workload) whose identity is asserted by the Identity Provider. <xref target="OIDC.Core"/> §2 (<spanx style="verb">sub</spanx> claim), <xref target="SAML2.Core"/> §2.4</t>
 
 </section>
-<section anchor="deployment-model"><name>Reference Deployment Model</name>
+</section>
+<section anchor="session-lifecycle"><name>Federated Session Lifecycle</name>
 
-<t>The following diagram illustrates a common SaaS deployment where the Application acts as an RP to the enterprise IdP but also operates its own first-party Authorization Server that issues access tokens and refresh tokens to its own first-party clients (web app, mobile app, CLI).</t>
+<t>The Reestablish Session and Invalidate Authentication State commands affect RP session and authentication state in distinct ways — one expires sessions while preserving tokens, the other invalidates all artifacts. This section defines a <strong>logical model</strong> for the lifecycle of a federated authentication session at the Relying Party, providing a framework for understanding how each command transitions the subject's state. The model describes the states and transitions of <strong>RP session and authentication-artifact state</strong> — it does not model RP subscriber account lifecycle (e.g., provisioning, disabling, or deleting accounts), which is addressed separately by the IPSIE Account Lifecycle (AL) levels.</t>
+
+<t>This model is <strong>informational</strong> — RPs are not required to implement these states or transitions internally. The normative requirements for RPs are defined by the lifecycle commands in Section 4. The model provides a shared vocabulary for reasoning about session state and the expected behavior of each command.</t>
+
+<t>The IdP and RP manage sessions independently of each other — the federation protocol does not bind IdP session state to RP session state. <xref target="NIST.SP.800-63C"/> §5.3. This model describes the RP-side view of the federated session.</t>
+
+<section anchor="session-state-diagram"><name>Session State Diagram</name>
 
 <figure><artwork type="ascii-art"><![CDATA[
-+---------------------------------------------------------------------+
-|  Enterprise                                                         |
-|                                                                     |
-|  +-----------------------+                                          |
-|  |  Identity Provider    |                                          |
-|  |  (IdP)                |                                          |
-|  |                       |                                          |
-|  |  +-----------------+  |    Lifecycle Commands                    |
-|  |  | IdP SSO Session |  |- - - - - - - - - - - - - - +            |
-|  |  +-----------------+  |    (expire / invalidate)    |            |
-|  +-----------------------+                             v            |
-|                                                                     |
-|  +--------------------------------------------------------------+   |
-|  |  SaaS Application (RP)                                       |   |
-|  |                                                              |   |
-|  |  +----------------------------------------------------------+|   |
-|  |  |  Application Server                                      ||   |
-|  |  |                                                          ||   |
-|  |  |  +-----------------+    +----------------------+         ||   |
-|  |  |  | RP Client       |    | 1st-Party            |         ||   |
-|  |  |  | Sessions        |    | Authorization Server |         ||   |
-|  |  |  |                 |    |                      |         ||   |
-|  |  |  | o Web sessions  |    | o Access tokens      |         ||   |
-|  |  |  | o App sessions  |    | o Refresh tokens     |         ||   |
-|  |  |  +-----------------+    +----------------------+         ||   |
-|  |  |                                                          ||   |
-|  |  |  +-----------------+    +----------------------+         ||   |
-|  |  |  | API Keys        |    | Resource Server(s)   |         ||   |
-|  |  |  |                 |    |                      |         ||   |
-|  |  |  | o Service keys  |    | o APIs               |         ||   |
-|  |  |  | o PATs          |    | o Protected          |         ||   |
-|  |  |  | o Static tokens |    |   resources          |         ||   |
-|  |  |  +-----------------+    +----------------------+         ||   |
-|  |  +----------------------------------------------------------+|   |
-|  +--------------------------------------------------------------+   |
-|                         ^           ^           ^                   |
-|                         |           |           |                   |
-|                    +---------+ +---------+ +---------+              |
-|                    | Web App | | Mobile  | |  CLI    |              |
-|                    |         | |  App    | |         |              |
-|                    +---------+ +---------+ +---------+              |
-|                         1st-Party Clients                           |
-+---------------------------------------------------------------------+
+                    +-------------------+
+                    |  Unauthenticated  |<-----------------------+
+                    +-------------------+                        |
+                             |                                   |
+                    (access protected resource)                  |
+                             |                                   |
+                             v                                   |
+                    +-------------------+                        |
+         +--------->|    Establish      |                        |
+         |          +-------------------+                        |
+         |                   |                                   |
+         |          (session established)                        |
+         |                   |                                   |
+         |                   v                                   |
+         |          +-------------------+                        |
+         |          |      Active       |                        |
+         |          +-------------------+                        |
+         |           |    |       |    \                         |
+         |           |    |       |     (user logout)            |
+         |           |    |       |         \                    |
+         |           v    v       v          v                   |
+         |  +---------+ +-----------+ +------------+          |
+         |  | Expired | | Suspended | | Terminated |          |
+         |  +---------+ +-----------+ +------------+          |
+         |       |             |               |                 |
+         +-------+-------------+               +-----------------+
+       (subject returns                   (subject returns
+        to Establish)                      to Unauthenticated)
 ]]></artwork></figure>
 
-<t>In this model, the SaaS Application is both:</t>
-
-<t><list style="symbols">
-  <t>A <strong>Relying Party (RP)</strong> that depends on the enterprise IdP for user authentication via SSO</t>
-  <t>A <strong>first-party Authorization Server</strong> that issues its own OAuth access tokens and refresh tokens to its own clients (web app, mobile app, CLI)</t>
-</list></t>
-
-<t>The authentication artifacts managed by the SaaS Application include:</t>
+<t>The lifecycle defines three progressive levels of IdP control over RP sessions, plus user-initiated logout:</t>
 
 <texttable>
-      <ttcol align='left'>Artifact</ttcol>
-      <ttcol align='left'>Issuer</ttcol>
-      <ttcol align='left'>Description</ttcol>
-      <c>RP client sessions</c>
-      <c>Application</c>
-      <c>Browser cookie sessions, native-app session tokens</c>
-      <c>Access tokens</c>
-      <c>Application (1st-party AS)</c>
-      <c>Short-lived tokens issued to 1st-party clients for API access</c>
-      <c>Refresh tokens</c>
-      <c>Application (1st-party AS)</c>
-      <c>Long-lived tokens used by 1st-party clients to obtain new access tokens</c>
-      <c>API keys</c>
-      <c>Application</c>
-      <c>Service keys, PATs, and static bearer tokens issued to users</c>
+      <ttcol align='left'>Level</ttcol>
+      <ttcol align='left'>State</ttcol>
+      <ttcol align='left'>Trigger</ttcol>
+      <ttcol align='left'>IdP Intent</ttcol>
+      <ttcol align='left'>Tokens &amp; API Keys</ttcol>
+      <c><strong>1. Check-back</strong></c>
+      <c><strong>Expired</strong></c>
+      <c>Time-based expiry (inactivity or absolute timeout)</c>
+      <c>"Come back so I can re-evaluate"</c>
+      <c>Unchanged</c>
+      <c><strong>2. Suspend</strong></c>
+      <c><strong>Suspended</strong></c>
+      <c>Reestablish Session command</c>
+      <c>"Get a fresh session — full re-evaluation required"</c>
+      <c>Unchanged</c>
+      <c><strong>3. Terminate</strong></c>
+      <c><strong>Terminated</strong></c>
+      <c>Invalidate Authentication State command</c>
+      <c>"Kill everything — security event"</c>
+      <c>Invalidated / revoked</c>
+      <c>—</c>
+      <c><strong>Unauthenticated</strong></c>
+      <c>User-initiated logout</c>
+      <c>Subject clears RP state</c>
+      <c>RP session cleared</c>
 </texttable>
 
 </section>
-<section anchor="command-effects-on-this-deployment"><name>Command Effects on This Deployment</name>
+<section anchor="session-states"><name>State Descriptions</name>
 
-<t><strong>Expire Session State</strong> — IdP sends <spanx style="verb">expire</spanx>:</t>
+<t><strong>Unauthenticated:</strong>
+No session exists for the subject at the RP. The subject has not yet authenticated, all prior authentication state has been terminated, or the subject has logged out. This is the initial state, the return state after termination, and the return state after user-initiated logout. <xref target="NIST.SP.800-63B"/> §7.1</t>
 
-<figure><artwork type="ascii-art"><![CDATA[
-IdP --expire--> SaaS Application (RP)
-                    |
-                    +-- RP client sessions ......... EXPIRE
-                    +-- Access tokens .............. unchanged
-                    +-- Refresh tokens ............. unchanged
-                    +-- API keys ................... unchanged
-]]></artwork></figure>
+<t><strong>Establish:</strong>
+The RP has initiated a federation transaction. The subject is redirected to the IdP for authentication. The authentication intent — Session Continuation, Step-Up Authentication, or Forced Reauthentication — depends on how the subject arrived at this state (see Section 3.6). The IdP authenticates the subject (or satisfies the request from an existing session when the authentication intent permits), issues an assertion — an OIDC ID Token or SAML <spanx style="verb">&lt;Assertion&gt;</spanx> — and delivers it to the RP. The RP validates the assertion (signature, issuer, audience, freshness), establishes a local RP client session bound to the assertion, and MAY issue OAuth access tokens and refresh tokens to first-party clients. The subject MAY create API keys. These artifacts collectively form the subject's <strong>authentication state</strong> at the RP. If any validation step fails, the subject remains Unauthenticated. <xref target="NIST.SP.800-63C"/> §5–6, <xref target="OIDC.Core"/> §3.1.2, <xref target="SAML2.Core"/> §3.4, <xref target="NIST.SP.800-63B"/> §7.1</t>
 
-<t>All of the user's interactive sessions are expired. First-party clients holding valid access tokens or refresh tokens continue to operate. Background API integrations using API keys are unaffected. The user must reauthenticate at the IdP to establish a new session.</t>
+<t><strong>Active:</strong>
+The subject has an established session and is accessing RP resources using the session, tokens, and API keys. The RP enforces session validity, token lifetime, and authorization policy. Token refresh operations extend API access without requiring reauthentication. <xref target="NIST.SP.800-63B"/> §7.2</t>
 
-<t><strong>Invalidate Authentication State</strong> — IdP sends <spanx style="verb">invalidate</spanx>:</t>
+<t><strong>Expired:</strong>
+The subject's RP client sessions are no longer valid due to time-based expiry. Expiry may be triggered by:</t>
 
-<figure><artwork type="ascii-art"><![CDATA[
-IdP --invalidate--> SaaS Application (RP)
-                        |
-                        +-- RP client sessions ......... INVALIDATE
-                        +-- Access tokens .............. INVALIDATE
-                        +-- Refresh tokens ............. INVALIDATE
-                        +-- API keys ................... REVOKE
-                        |
-                        |   1st-Party AS
-                        +-- Revoke refresh tokens at AS
-                        +-- Revoke/invalidate access tokens at AS
-]]></artwork></figure>
+<t><list style="symbols">
+  <t><strong>Inactivity timeout</strong> — no subscriber activity within the configured timeout period <xref target="NIST.SP.800-63B"/> §7.2</t>
+  <t><strong>Absolute timeout</strong> — maximum session duration reached regardless of activity <xref target="NIST.SP.800-63B"/> §7.2</t>
+</list></t>
 
-<t>All authentication artifacts for the subject are invalidated or revoked. Access tokens held by first-party clients will be invalid on next use. Refresh token rotation will fail. API key-based integrations will stop functioning. The user and all automated integrations must reauthenticate at the IdP and obtain new credentials.</t>
+<t>Tokens and API keys remain valid. The subject returns to the Establish state, where the IdP may satisfy the request via <strong>Session Continuation</strong> (reusing the existing IdP session) or <strong>Step-Up Authentication</strong> if the IdP's policy requires it. <strong>Forced Reauthentication</strong> may also be used but is not required. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access. <xref target="OIDC.Core"/> §3.1.3.7</t>
 
-<t><strong>Note on deployment:</strong> In this deployment, the SaaS Application is both the RP and the AS. When the RP receives an OP Commands <spanx style="verb">invalidate</spanx> command, it invalidates sessions, tokens, and API keys in a single internal operation. When the RP and AS are separate entities, the RP is still responsible for invalidating all authentication artifacts within its domain upon receiving the command.</t>
+<t><strong>Suspended:</strong>
+The subject's RP client sessions are suspended — expired but with tokens and API keys remaining valid. Unlike the Expired state, the subject MUST return to the Establish state via <strong>Forced Reauthentication</strong> — Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 4.3 for Forced Reauthentication requirements.</t>
+
+<t>A session may be suspended by the <strong>Reestablish Session</strong> command from the IdP, or by RP-specific mechanisms such as account lockout, account recovery, administrative action, or risk-based policy enforcement. This specification defines the IdP-initiated trigger; RP-specific triggers are outside the scope of this specification but produce the same logical state.</t>
+
+<t><strong>Terminated:</strong>
+All authentication artifacts — sessions, tokens, and API keys — have been invalidated or revoked via the <strong>Invalidate Authentication State</strong> command (SL2). This is the most severe level of IdP control, indicating a security event where prior authentication artifacts should no longer be trusted. The subject returns to the Unauthenticated state and must proceed through Establish via <strong>Forced Reauthentication</strong>. <xref target="NIST.SP.800-63B"/> §7.1</t>
+
+</section>
+<section anchor="session-transitions"><name>Session State Transitions</name>
+
+<texttable>
+      <ttcol align='left'>From</ttcol>
+      <ttcol align='left'>To</ttcol>
+      <ttcol align='left'>Trigger</ttcol>
+      <ttcol align='left'>Notes</ttcol>
+      <c>Unauthenticated</c>
+      <c>Establish</c>
+      <c>Subject accesses protected resource</c>
+      <c>RP initiates federation transaction</c>
+      <c>Establish</c>
+      <c>Active</c>
+      <c>Assertion validated, session created</c>
+      <c>RP creates session, issues tokens</c>
+      <c>Establish</c>
+      <c>Unauthenticated</c>
+      <c>Assertion validation fails</c>
+      <c>No session created</c>
+      <c>Active</c>
+      <c>Expired</c>
+      <c>Inactivity timeout or absolute timeout</c>
+      <c>Time-based triggers (SL1)</c>
+      <c>Active</c>
+      <c>Suspended</c>
+      <c><strong>Reestablish Session</strong> command</c>
+      <c>IdP-initiated access revalidation (SL2)</c>
+      <c>Active</c>
+      <c>Terminated</c>
+      <c><strong>Invalidate Authentication State</strong> command</c>
+      <c>IdP-initiated security operation (SL2)</c>
+      <c>Active</c>
+      <c>Unauthenticated</c>
+      <c>User-initiated logout</c>
+      <c>Subject clears RP session state</c>
+      <c>Expired</c>
+      <c>Establish</c>
+      <c>Subject requests access</c>
+      <c>Session Continuation, Step-Up, or Forced Reauthentication</c>
+      <c>Suspended</c>
+      <c>Establish</c>
+      <c>Subject requests access</c>
+      <c>Forced Reauthentication ONLY</c>
+      <c>Terminated</c>
+      <c>Unauthenticated</c>
+      <c><em>(immediate)</em></c>
+      <c>All artifacts invalidated; must start fresh</c>
+      <c>Unauthenticated</c>
+      <c>Establish</c>
+      <c>Subject requests access</c>
+      <c>New federation transaction</c>
+</texttable>
+
+</section>
+<section anchor="session-progressive-control"><name>Progressive IdP Control</name>
+
+<t>The three terminal states — Expired, Suspended, and Terminated — represent a <strong>progressive escalation</strong> of IdP control over the RP session:</t>
+
+<texttable>
+      <ttcol align='left'>&#160;</ttcol>
+      <ttcol align='left'>Expired</ttcol>
+      <ttcol align='left'>Suspended</ttcol>
+      <ttcol align='left'>Terminated</ttcol>
+      <c><strong>IdP intent</strong></c>
+      <c>Periodic check-back</c>
+      <c>Full access revalidation</c>
+      <c>Security response</c>
+      <c><strong>Sessions</strong></c>
+      <c>Expired</c>
+      <c>Expired</c>
+      <c>Invalidated</c>
+      <c><strong>Tokens</strong></c>
+      <c>Unchanged</c>
+      <c>Unchanged</c>
+      <c>Invalidated</c>
+      <c><strong>API keys</strong></c>
+      <c>Unchanged</c>
+      <c>Unchanged</c>
+      <c>Revoked</c>
+      <c><strong>Authentication intent</strong></c>
+      <c>Session Continuation, Step-Up, or Forced Reauthentication</c>
+      <c>Forced Reauthentication only</c>
+      <c>Forced Reauthentication only</c>
+      <c><strong>IdP session</strong></c>
+      <c>May still be valid</c>
+      <c>MUST NOT be reused</c>
+      <c>Invalidated</c>
+      <c><strong>Returns to</strong></c>
+      <c>Establish</c>
+      <c>Establish</c>
+      <c>Unauthenticated</c>
+      <c><strong>IPSIE level</strong></c>
+      <c>SL1+</c>
+      <c>SL2+</c>
+      <c>SL2+</c>
+</texttable>
+
+</section>
+</section>
+<section anchor="auth-intents"><name>Authentication Intents</name>
+
+<t>When a Relying Party redirects a subject to the Identity Provider, the resulting authentication interaction falls into one of three intents. These intents are orthogonal to protocol mechanics and are derived from the RP's expressed requirements (e.g., <spanx style="verb">prompt</spanx>, <spanx style="verb">max_age</spanx>, <spanx style="verb">acr_values</spanx>) and the IdP's local policy and risk evaluation.</t>
+
+<section anchor="intent-continuation"><name>Session Continuation</name>
+
+<t><strong>Session Continuation</strong> occurs when a Relying Party requests authentication and the Identity Provider determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements.</t>
+
+<t>In this intent, no new authentication event occurs.</t>
+
+<section anchor="continuation-properties"><name>Properties</name>
+
+<t>When performing Session Continuation:</t>
+
+<t><list style="symbols">
+  <t>An existing IdP authentication session <strong>MUST</strong> exist and remain valid.</t>
+  <t>The IdP <strong>MUST NOT</strong> require the user to perform a new primary authentication ceremony.</t>
+  <t>The existing authentication context, including <spanx style="verb">auth_time</spanx>, <spanx style="verb">acr</spanx>, and <spanx style="verb">amr</spanx>, <strong>MUST</strong> be preserved.</t>
+  <t>New tokens <strong>MAY</strong> be issued to the RP.</t>
+  <t>The IdP <strong>MUST</strong> treat the request as a continuation of the existing authentication session, not as a reauthentication.</t>
+</list></t>
+
+</section>
+<section anchor="continuation-triggers"><name>Typical Triggers</name>
+
+<t>Session Continuation is commonly applicable when:</t>
+
+<t><list style="symbols">
+  <t>An RP session has expired or been terminated locally.</t>
+  <t>The user agent has restarted or lost RP cookies.</t>
+  <t>The RP has performed an RP-local logout.</t>
+  <t>The RP is re-establishing application state.</t>
+</list></t>
+
+</section>
+<section anchor="continuation-protocol"><name>Protocol Expression</name>
+
+<t>An RP requesting Session Continuation <strong>MUST NOT</strong> include <spanx style="verb">prompt=login</spanx> (OIDC) or <spanx style="verb">ForceAuthn="true"</spanx> (SAML). The RP <strong>MAY</strong> use <spanx style="verb">prompt=none</spanx> (OIDC) or <spanx style="verb">IsPassive="true"</spanx> (SAML) to require silent continuation — if no valid IdP session exists, the IdP returns an error rather than prompting the user. The RP also:</t>
+
+<t><list style="symbols">
+  <t>Omits <spanx style="verb">max_age</spanx> or supplies a value satisfied by the existing session.</t>
+  <t>Does not request higher assurance via <spanx style="verb">acr_values</spanx>.</t>
+</list></t>
+
+</section>
+<section anchor="continuation-idp"><name>IdP Behavior</name>
+
+<t>If the IdP determines that the existing authentication session satisfies the RP's requirements, the IdP <strong>MUST</strong> perform Session Continuation.</t>
+
+<t>The IdP <strong>MAY</strong> override Session Continuation and require additional authentication based on risk signals or local policy.</t>
+
+</section>
+</section>
+<section anchor="intent-stepup"><name>Step-Up Authentication</name>
+
+<t><strong>Step-Up Authentication</strong> occurs when the Relying Party requires a higher level of assurance than is provided by the existing authentication session.</t>
+
+<t>In this intent, the IdP performs additional authentication steps sufficient to satisfy the requested assurance level.</t>
+
+<section anchor="stepup-properties"><name>Properties</name>
+
+<t>When performing Step-Up Authentication:</t>
+
+<t><list style="symbols">
+  <t>An existing IdP authentication session <strong>MUST</strong> exist.</t>
+  <t>The IdP <strong>MUST</strong> evaluate whether the current authentication context satisfies the requested assurance.</t>
+  <t>If the assurance is insufficient, the IdP <strong>MUST</strong> require additional authentication.</t>
+  <t>The IdP <strong>MAY</strong> reuse previously satisfied authentication factors.</t>
+  <t>The resulting authentication context <strong>MUST</strong> reflect the updated assurance, including updated <spanx style="verb">acr</spanx>, <spanx style="verb">amr</spanx>, and <spanx style="verb">auth_time</spanx> as appropriate.</t>
+</list></t>
+
+</section>
+<section anchor="stepup-triggers"><name>Typical Triggers</name>
+
+<t>Step-Up Authentication is commonly applicable when:</t>
+
+<t><list style="symbols">
+  <t>Accessing sensitive or privileged resources.</t>
+  <t>Performing high-risk transactions.</t>
+  <t>Responding to increased risk signals (e.g., device change, location change).</t>
+</list></t>
+
+</section>
+<section anchor="stepup-protocol"><name>Protocol Expression</name>
+
+<t>An RP requesting Step-Up Authentication typically:</t>
+
+<t><list style="symbols">
+  <t>Requests a higher assurance level using <spanx style="verb">acr_values</spanx>.</t>
+  <t>Optionally requests specific authentication methods via <spanx style="verb">claims</spanx>.</t>
+</list></t>
+
+</section>
+</section>
+<section anchor="intent-forced"><name>Forced Reauthentication</name>
+
+<t><strong>Forced Reauthentication</strong> occurs when the Relying Party explicitly requires a fresh authentication event, regardless of any existing authentication session at the IdP.</t>
+
+<t>In this intent, the existing authentication session <strong>MUST NOT</strong> be reused.</t>
+
+<section anchor="forced-properties"><name>Properties</name>
+
+<t>When performing Forced Reauthentication:</t>
+
+<t><list style="symbols">
+  <t>Any existing authentication session <strong>MUST NOT</strong> satisfy the request.</t>
+  <t>The IdP <strong>MUST</strong> require a new primary authentication ceremony.</t>
+  <t>The resulting authentication context <strong>MUST</strong> have a new <spanx style="verb">auth_time</spanx>.</t>
+  <t>Previous authentication context values <strong>MUST NOT</strong> be relied upon.</t>
+  <t>The RP <strong>MUST</strong> obtain a new session identifier (<spanx style="verb">sid</spanx> in OIDC, <spanx style="verb">SessionIndex</spanx> in SAML).</t>
+</list></t>
+
+</section>
+<section anchor="forced-triggers"><name>Typical Triggers</name>
+
+<t>Forced Reauthentication is commonly applicable when:</t>
+
+<t><list style="symbols">
+  <t>The RP has received a <strong>Reestablish Session</strong> command from the IdP.</t>
+  <t>The RP has received an <strong>Invalidate Authentication State</strong> command from the IdP.</t>
+  <t>An IdP-initiated logout or account recovery has occurred.</t>
+  <t>Regulatory or security policy mandates reauthentication.</t>
+</list></t>
+
+</section>
+<section anchor="forced-protocol"><name>Protocol Expression</name>
+
+<t>An RP requesting Forced Reauthentication <strong>MUST</strong>:</t>
+
+<texttable>
+      <ttcol align='left'>Protocol</ttcol>
+      <ttcol align='left'>Mechanism</ttcol>
+      <ttcol align='left'>Effect</ttcol>
+      <c><strong>OIDC</strong></c>
+      <c><spanx style="verb">prompt=login</spanx> and/or <spanx style="verb">max_age=0</spanx></c>
+      <c>Forces full authentication, disallows SSO session reuse</c>
+      <c><strong>SAML</strong></c>
+      <c><spanx style="verb">ForceAuthn="true"</spanx></c>
+      <c>Requires new authentication event</c>
+</texttable>
+
+<t>The RP <strong>MUST</strong> validate <spanx style="verb">auth_time</spanx> (OIDC) or <spanx style="verb">AuthnInstant</spanx> (SAML) to confirm that a new authentication occurred. The RP <strong>MUST</strong> verify that the session identifier (<spanx style="verb">sid</spanx> / <spanx style="verb">SessionIndex</spanx>) is different from the prior session. The RP <strong>SHOULD</strong> reject authentications that appear to reuse prior sessions.</t>
+
+</section>
+</section>
+<section anchor="intent-comparison"><name>Intent Comparison</name>
+
+<texttable>
+      <ttcol align='left'>&#160;</ttcol>
+      <ttcol align='left'>Session Continuation</ttcol>
+      <ttcol align='left'>Step-Up Authentication</ttcol>
+      <ttcol align='left'>Forced Reauthentication</ttcol>
+      <c><strong>Purpose</strong></c>
+      <c>Reestablish local RP state</c>
+      <c>Elevate assurance for a specific operation</c>
+      <c>Access revalidation — IdP re-evaluates policy, risk, and state</c>
+      <c><strong>Existing IdP session</strong></c>
+      <c>Reused</c>
+      <c>Reused (with additional factors)</c>
+      <c>Not reused — new authentication required</c>
+      <c><strong>Authentication ceremony</strong></c>
+      <c>None</c>
+      <c>Additional factors only</c>
+      <c>Full primary authentication</c>
+      <c><strong><spanx style="verb">auth_time</spanx></strong></c>
+      <c>Preserved from existing session</c>
+      <c>Updated</c>
+      <c>New</c>
+      <c><strong><spanx style="verb">acr</spanx> / <spanx style="verb">amr</spanx></strong></c>
+      <c>Preserved</c>
+      <c>Updated to reflect elevated assurance</c>
+      <c>New — reflects fresh authentication</c>
+      <c><strong>Session identifier</strong></c>
+      <c>May be same or new</c>
+      <c>Unchanged</c>
+      <c>New — MUST differ from prior session</c>
+      <c><strong>RP session binding</strong></c>
+      <c>New RP session, existing IdP session</c>
+      <c>Existing RP session preserved</c>
+      <c>New RP session, new IdP authentication</c>
+      <c><strong>Tokens and API keys</strong></c>
+      <c>Unchanged</c>
+      <c>Unchanged</c>
+      <c>Unchanged (Reestablish Session) or invalidated (Invalidate Authentication State)</c>
+      <c><strong>IdP evaluation</strong></c>
+      <c>Validates existing session is sufficient</c>
+      <c>Evaluates assurance requirements</c>
+      <c>Full policy evaluation — risk, device posture, conditional access, account state</c>
+      <c><strong>Initiated by</strong></c>
+      <c>RP (no command received)</c>
+      <c>RP (for a specific operation)</c>
+      <c>RP (in response to IdP command)</c>
+</texttable>
+
+</section>
+<section anchor="intent-command-requirements"><name>Command Requirements</name>
+
+<t>Both lifecycle commands defined in this specification require the RP to trigger <strong>Forced Reauthentication</strong> when the subject next interacts with the RP. Session Continuation and Step-Up Authentication are <strong>NOT</strong> sufficient to satisfy either command.</t>
+
+<texttable>
+      <ttcol align='left'>Command</ttcol>
+      <ttcol align='left'>Required Authentication Intent</ttcol>
+      <ttcol align='left'>Rationale</ttcol>
+      <c><strong>Reestablish Session</strong></c>
+      <c>Forced Reauthentication</c>
+      <c>The IdP must perform a full policy evaluation to determine whether to grant continued access. Reusing an existing session would bypass this evaluation.</c>
+      <c><strong>Invalidate Authentication State</strong></c>
+      <c>Forced Reauthentication</c>
+      <c>All prior authentication artifacts are invalidated. A completely new authentication is required.</c>
+</texttable>
+
+<t>When no command has been received — for example, when the RP's local session has expired, cookies have been lost, or the RP has performed an RP-local logout — the RP <strong>MAY</strong> allow Session Continuation. In this case, the RP does not include <spanx style="verb">prompt=login</spanx> or <spanx style="verb">ForceAuthn="true"</spanx>, and the IdP may satisfy the request from an existing authentication session.</t>
+
+</section>
+<section anchor="session-auth-intents"><name>Authentication Intent Requirements by Session State</name>
+
+<t>The authentication intent used when the subject returns to the Establish state depends on the terminal state and how it was reached.</t>
+
+<texttable>
+      <ttcol align='left'>Terminal State</ttcol>
+      <ttcol align='left'>Trigger</ttcol>
+      <ttcol align='left'>Allowed Authentication Intents</ttcol>
+      <ttcol align='left'>Rationale</ttcol>
+      <c><strong>Expired</strong></c>
+      <c>Inactivity timeout</c>
+      <c>Session Continuation, Step-Up, or Forced Reauthentication</c>
+      <c>IdP session may still be valid; IdP re-evaluates on check-back</c>
+      <c><strong>Expired</strong></c>
+      <c>Absolute timeout</c>
+      <c>Session Continuation, Step-Up, or Forced Reauthentication</c>
+      <c>IdP session may still be valid; IdP re-evaluates on check-back</c>
+      <c><strong>Suspended</strong></c>
+      <c>Reestablish Session command</c>
+      <c><strong>Forced Reauthentication ONLY</strong></c>
+      <c>IdP explicitly requires full policy re-evaluation; existing IdP session MUST NOT be reused</c>
+      <c><strong>Terminated</strong></c>
+      <c>Invalidate Authentication State command</c>
+      <c><strong>Forced Reauthentication ONLY</strong></c>
+      <c>Security event; all prior artifacts are untrusted; full authentication required</c>
+      <c><strong>Unauthenticated</strong></c>
+      <c>User-initiated logout</c>
+      <c>Session Continuation, Step-Up, or Forced Reauthentication</c>
+      <c>No command received; IdP session may still be valid</c>
+</texttable>
 
 </section>
 </section>
 <section anchor="commands"><name>Lifecycle Command Definitions</name>
 
-<section anchor="cmd-expire"><name>Expire Session State</name>
+<section anchor="cmd-reestablish"><name>Reestablish Session</name>
 
-<t>An IdP command requiring the RP to expire <strong>all</strong> of the subject's RP client sessions and require reauthentication before continuing. This is the on-demand equivalent of the session expiry behavior at SL1, where the RP expires sessions when the assertion's validity period ends — but triggered by the IdP rather than by a time-based claim.</t>
+<t>An IdP command requiring the RP to expire <strong>all</strong> of the subject's RP client sessions and reestablish them through a full authentication at the IdP. The purpose of this command is <strong>access revalidation</strong> — giving the IdP the opportunity to re-evaluate policy, risk, device posture, account state, and conditional access rules before allowing the subject to continue accessing the RP.</t>
+
+<t>This command transitions the session to the <strong>Suspended</strong> state (see Section 2), which requires <strong>Forced Reauthentication</strong> — Session Continuation and Step-Up Authentication are not sufficient. This is distinct from time-based session expiry (the <strong>Expired</strong> state), where the IdP may satisfy the request via Session Continuation.</t>
 
 <t><strong>Scope:</strong> All RP client sessions for the subject — browser cookie sessions, native-app session tokens, and any other interactive session state.</t>
 
-<section anchor="expire-rp"><name>RP Requirements</name>
+<section anchor="reestablish-rp"><name>RP Requirements</name>
 
 <t>When an RP receives this command, it <strong>MUST</strong>:</t>
 
 <t><list style="numbers" type="1">
   <t>Expire all RP client sessions for the subject</t>
   <t>Expire all associated session identifiers (delete session cookies, expire native-app session tokens)</t>
-  <t>Require <strong>reauthentication</strong> at the IdP (see Section 3)</t>
-  <t>NOT silently re-establish the session using existing tokens or SSO cookies</t>
+  <t>Require <strong>Forced Reauthentication</strong> at the IdP (see Section 3.3)</t>
+  <t>NOT silently re-establish the session using existing tokens, SSO cookies, or Session Continuation</t>
 </list></t>
 
 <t>The RP <strong>MUST NOT</strong>:</t>
@@ -313,7 +680,7 @@ IdP --invalidate--> SaaS Application (RP)
 </list></t>
 
 </section>
-<section anchor="expire-idp"><name>IdP Requirements</name>
+<section anchor="reestablish-idp"><name>IdP Requirements</name>
 
 <t>When an IdP sends this command, it <strong>MAY</strong>:</t>
 
@@ -322,7 +689,7 @@ IdP --invalidate--> SaaS Application (RP)
 </list></t>
 
 </section>
-<section anchor="expire-state"><name>Resulting State</name>
+<section anchor="reestablish-state"><name>Resulting State</name>
 
 <texttable>
       <ttcol align='left'>Artifact</ttcol>
@@ -342,34 +709,10 @@ IdP --invalidate--> SaaS Application (RP)
 </texttable>
 
 </section>
-<section anchor="expire-caep"><name>CAEP Events (SL3)</name>
-
-<t>At <strong>SL3</strong>, the RP <strong>SHOULD</strong> publish the following CAEP events after processing an Expire Session State command:</t>
-
-<texttable>
-      <ttcol align='left'>CAEP Event</ttcol>
-      <ttcol align='left'>URI</ttcol>
-      <ttcol align='left'>Purpose</ttcol>
-      <c><strong>Session Revoked</strong></c>
-      <c><spanx style="verb">https://schemas.openid.net/secevent/caep/event-type/session-revoked</spanx></c>
-      <c>Notify the ecosystem that the subject's RP client session has been expired</c>
-</texttable>
-
-<t>The RP <strong>SHOULD</strong> include the following claims in the <spanx style="verb">session-revoked</spanx> event:</t>
-
-<t><list style="symbols">
-  <t><spanx style="verb">sub</spanx> — the subject whose session was expired</t>
-  <t><spanx style="verb">reason_admin</spanx> — indicate that the session was expired at IdP request (e.g., <spanx style="verb">"Session expired by IdP command"</spanx>)</t>
-  <t><spanx style="verb">event_timestamp</spanx> — the time at which the RP expired the session</t>
-</list></t>
-
-<t>The RP <strong>SHOULD NOT</strong> publish <spanx style="verb">credential-change</spanx> events for Expire Session State, as tokens and API keys are unaffected.</t>
-
-</section>
 </section>
 <section anchor="cmd-invalidate"><name>Invalidate Authentication State</name>
 
-<t>An IdP command requiring all existing authentication artifacts to be treated as untrusted, including sessions, access tokens, refresh tokens, and API keys.</t>
+<t>An IdP command requiring all existing authentication artifacts to be treated as untrusted, including sessions, access tokens, refresh tokens, and API keys. This command transitions the session to the <strong>Terminated</strong> state (see Section 2), which invalidates all artifacts and requires <strong>Forced Reauthentication</strong>. This is the most severe level of IdP control, indicating a security event.</t>
 
 <t><strong>Scope:</strong> All prior authentication state — sessions, tokens, and API keys.</t>
 
@@ -378,11 +721,12 @@ IdP --invalidate--> SaaS Application (RP)
 <t>When an RP receives this command, it <strong>MUST</strong>:</t>
 
 <t><list style="numbers" type="1">
-  <t>Perform all "Expire Session State" steps (Section 2.1.1)</t>
+  <t>Expire all RP client sessions for the subject</t>
+  <t>Expire all associated session identifiers (delete session cookies, expire native-app session tokens)</t>
   <t>Invalidate all existing access tokens for the subject</t>
   <t>Invalidate all existing refresh tokens for the subject</t>
   <t>Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)</t>
-  <t>Require <strong>reauthentication</strong> at the IdP (see Section 3)</t>
+  <t>Require <strong>Forced Reauthentication</strong> at the IdP (see Section 3.3)</t>
   <t>Stop any background API operations using existing tokens or API keys</t>
 </list></t>
 
@@ -426,9 +770,38 @@ IdP --invalidate--> SaaS Application (RP)
 </texttable>
 
 </section>
-<section anchor="invalidate-caep"><name>CAEP Events (SL3)</name>
+</section>
+<section anchor="caep-events"><name>CAEP Events (SL3)</name>
 
-<t>At <strong>SL3</strong>, the RP <strong>SHOULD</strong> publish the following CAEP events after processing an Invalidate Authentication State command:</t>
+<t>At <strong>SL3</strong>, the RP <strong>SHOULD</strong> publish CAEP events after processing lifecycle commands. This enables downstream Resource Servers and other participants in the SSF stream to stop accepting artifacts for the subject without waiting for token expiry or polling for revocation status.</t>
+
+<section anchor="caep-reestablish"><name>Reestablish Session Events</name>
+
+<t>After processing a Reestablish Session command, the RP <strong>SHOULD</strong> publish:</t>
+
+<texttable>
+      <ttcol align='left'>CAEP Event</ttcol>
+      <ttcol align='left'>URI</ttcol>
+      <ttcol align='left'>Purpose</ttcol>
+      <c><strong>Session Revoked</strong></c>
+      <c><spanx style="verb">https://schemas.openid.net/secevent/caep/event-type/session-revoked</spanx></c>
+      <c>Notify the ecosystem that the subject's RP client session has been expired</c>
+</texttable>
+
+<t>The RP <strong>SHOULD</strong> include the following claims in the <spanx style="verb">session-revoked</spanx> event:</t>
+
+<t><list style="symbols">
+  <t><spanx style="verb">sub</spanx> — the subject whose session was expired</t>
+  <t><spanx style="verb">reason_admin</spanx> — indicate that session reestablishment was requested (e.g., <spanx style="verb">"Session reestablishment required by IdP"</spanx>)</t>
+  <t><spanx style="verb">event_timestamp</spanx> — the time at which the RP expired the session</t>
+</list></t>
+
+<t>The RP <strong>SHOULD NOT</strong> publish <spanx style="verb">credential-change</spanx> events for Reestablish Session, as tokens and API keys are unaffected.</t>
+
+</section>
+<section anchor="caep-invalidate"><name>Invalidate Authentication State Events</name>
+
+<t>After processing an Invalidate Authentication State command, the RP <strong>SHOULD</strong> publish:</t>
 
 <texttable>
       <ttcol align='left'>CAEP Event</ttcol>
@@ -467,8 +840,6 @@ IdP --invalidate--> SaaS Application (RP)
       <c>API keys revoked</c>
 </texttable>
 
-<t>Publishing these events enables downstream Resource Servers and other participants in the SSF stream to stop accepting artifacts for the subject without waiting for token expiry or polling for revocation status.</t>
-
 </section>
 </section>
 <section anchor="command-semantics"><name>Command Processing Semantics</name>
@@ -491,55 +862,18 @@ IdP --invalidate--> SaaS Application (RP)
 </section>
 <section anchor="command-ordering"><name>Command Ordering</name>
 
-<t>Invalidate Authentication State is a strict superset of Expire Session State — it includes all session expiry steps plus token invalidation and API key revocation.</t>
+<t>Invalidate Authentication State is a strict superset of Reestablish Session — it includes all session expiry steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the <strong>Suspended</strong> state while Invalidate Authentication State transitions to the <strong>Terminated</strong> state (see Section 2.4).</t>
 
 <t>If both commands are received for the same subject:</t>
 
 <t><list style="symbols">
-  <t><strong>Expire Session State after Invalidate Authentication State:</strong> The RP <strong>MUST</strong> succeed. The resulting state has already been achieved by the prior invalidation — all sessions are already invalidated and tokens revoked. No further action is needed.</t>
-  <t><strong>Invalidate Authentication State after Expire Session State:</strong> The RP <strong>MUST</strong> process the full Invalidate Authentication State command. Sessions may already be expired, but the RP must additionally invalidate tokens and revoke API keys.</t>
+  <t><strong>Reestablish Session after Invalidate Authentication State:</strong> The RP <strong>MUST</strong> succeed. The session is already in the Terminated state — all artifacts are invalidated. No further action is needed.</t>
+  <t><strong>Invalidate Authentication State after Reestablish Session:</strong> The RP <strong>MUST</strong> process the full Invalidate Authentication State command. The session transitions from the Suspended state to the Terminated state. Sessions may already be expired, but the RP must additionally invalidate tokens and revoke API keys.</t>
 </list></t>
 
-<t>In general, the RP <strong>SHOULD</strong> apply each command to the current state of the subject's artifacts. A command succeeds if the resulting state defined in Sections 2.1.3 or 2.2.3 is achieved, regardless of what prior state existed.</t>
+<t>In general, the RP <strong>SHOULD</strong> apply each command to the current state of the subject's artifacts. A command succeeds if the resulting state defined in Sections 4.1.3 or 4.2.3 is achieved, regardless of what prior state existed.</t>
 
 </section>
-</section>
-</section>
-<section anchor="fresh-auth"><name>Reauthentication Requirement</name>
-
-<t>Both commands require the RP to obtain <strong>reauthentication</strong> — a new primary authentication event at the IdP, not reuse of an existing SSO session.</t>
-
-<section anchor="fresh-auth-rp"><name>RP Requirements</name>
-
-<t>The RP <strong>MUST</strong>:</t>
-
-<t><list style="numbers" type="1">
-  <t>Redirect the user to the IdP for authentication</t>
-  <t>Prevent silent SSO reuse (force user interaction)</t>
-  <t>Obtain a new authentication assertion or token with a <strong>new session identifier</strong></t>
-  <t>Validate that the authentication time is recent and not from a prior session</t>
-  <t>Establish a new RP client session bound to the new assertion</t>
-</list></t>
-
-<t><strong>Note:</strong> Reauthentication is not an extension of assurance for an existing session — it is a reevaluation of access through a new primary authentication event. The RP MUST obtain a new session identifier from the IdP (e.g., a new <spanx style="verb">sid</spanx> in OIDC or a new <spanx style="verb">SessionIndex</spanx> in SAML) and MUST NOT reuse or extend the prior session. <xref target="NIST.SP.800-63B"/> §7.2</t>
-
-</section>
-<section anchor="fresh-auth-controls"><name>Protocol Controls for Reauthentication</name>
-
-<texttable>
-      <ttcol align='left'>Protocol</ttcol>
-      <ttcol align='left'>Mechanism</ttcol>
-      <ttcol align='left'>Effect</ttcol>
-      <c><strong>OIDC</strong></c>
-      <c><spanx style="verb">prompt=login</spanx> and/or <spanx style="verb">max_age=0</spanx></c>
-      <c>Forces re-authentication, disallows SSO session reuse</c>
-      <c><strong>SAML</strong></c>
-      <c><spanx style="verb">ForceAuthn="true"</spanx></c>
-      <c>Requires new authentication event</c>
-</texttable>
-
-<t>The RP <strong>MUST</strong> validate <spanx style="verb">auth_time</spanx> (OIDC) or <spanx style="verb">AuthnInstant</spanx> (SAML) to confirm reauthentication. The RP <strong>SHOULD</strong> reject authentications that appear to reuse prior sessions.</t>
-
 </section>
 </section>
 <section anchor="protocol-mappings"><name>Protocol Mappings</name>
@@ -548,16 +882,16 @@ IdP --invalidate--> SaaS Application (RP)
 
 <section anchor="completeness"><name>Completeness Requirement</name>
 
-<t>Each command defines a complete resulting state (Sections 2.1.3 and 2.2.3). A protocol implementation <strong>MUST</strong> achieve the full resulting state of a command to claim support for that command. Partial fulfillment is not sufficient.</t>
+<t>Each command defines a complete resulting state (Sections 4.1.3 and 4.2.3). A protocol implementation <strong>MUST</strong> achieve the full resulting state of a command to claim support for that command. Partial fulfillment is not sufficient.</t>
 
-<t><strong>Implication:</strong> It is acceptable for a protocol to support only one of the two commands. For example, OIDC Back-Channel Logout can fully complete "Expire Session State" but cannot on its own complete "Invalidate Authentication State" (it does not revoke tokens). Similarly, OAuth Token Revocation <xref target="RFC7009"/> revokes tokens but does not expire RP client sessions, so it cannot complete either command alone.</t>
+<t><strong>Implication:</strong> It is acceptable for a protocol to support only one of the two commands. For example, OIDC Back-Channel Logout can fully complete "Reestablish Session" but cannot on its own complete "Invalidate Authentication State" (it does not revoke tokens). Similarly, OAuth Token Revocation <xref target="RFC7009"/> revokes tokens but does not expire RP client sessions, so it cannot complete either command alone.</t>
 
 </section>
-<section anchor="expire-mappings"><name>Expire Session State — Protocol Mappings</name>
+<section anchor="reestablish-mappings"><name>Reestablish Session — Protocol Mappings</name>
 
-<t>The following protocols can <strong>fully complete</strong> the Expire Session State command because they expire the RP client session and trigger reauthentication.</t>
+<t>The following protocols can <strong>fully complete</strong> the Reestablish Session command because they expire the RP client session and require the RP to reestablish it through a full authentication at the IdP.</t>
 
-<section anchor="expire-bcl"><name>OIDC Back-Channel Logout (RECOMMENDED)</name>
+<section anchor="reestablish-bcl"><name>OIDC Back-Channel Logout (RECOMMENDED)</name>
 
 <t><strong>Specification:</strong> <xref target="OIDC.BackChannelLogout"/></t>
 
@@ -575,21 +909,13 @@ IdP --invalidate--> SaaS Application (RP)
       <c>IdP SSO session</c>
       <c>MAY be expired independently</c>
       <c><strong>Completes command?</strong></c>
-      <c><strong>Yes</strong> — fully satisfies Expire Session State</c>
+      <c><strong>Yes</strong> — fully satisfies Reestablish Session</c>
 </texttable>
 
-<t><strong>RP Implementation:</strong></t>
-
-<t><list style="numbers" type="1">
-  <t>Validate the Logout Token signature against IdP JWKS</t>
-  <t>Verify <spanx style="verb">iss</spanx>, <spanx style="verb">aud</spanx>, <spanx style="verb">iat</spanx>, and <spanx style="verb">events</spanx> claims</t>
-  <t>Look up local session(s) by <spanx style="verb">sub</spanx> and/or <spanx style="verb">sid</spanx></t>
-  <t>Expire matching RP client sessions</t>
-  <t>On next user interaction, redirect to IdP with <spanx style="verb">prompt=login</spanx></t>
-</list></t>
+<t>See Appendix B for RP implementation steps.</t>
 
 </section>
-<section anchor="expire-fcl"><name>OIDC Front-Channel Logout (ACCEPTABLE)</name>
+<section anchor="reestablish-fcl"><name>OIDC Front-Channel Logout (ACCEPTABLE)</name>
 
 <t><strong>Specification:</strong> <xref target="OIDC.FrontChannelLogout"/></t>
 
@@ -609,7 +935,7 @@ IdP --invalidate--> SaaS Application (RP)
 <t><strong>Limitations:</strong> Fails if browser is closed, third-party cookies are blocked, or iframes are suppressed. <strong>NOT RECOMMENDED</strong> as sole mechanism.</t>
 
 </section>
-<section anchor="expire-saml-slo"><name>SAML 2.0 Single Logout (ACCEPTABLE)</name>
+<section anchor="reestablish-saml-slo"><name>SAML 2.0 Single Logout (ACCEPTABLE)</name>
 
 <t><strong>Specification:</strong> <xref target="SAML2.Profiles"/> Section 4.4</t>
 
@@ -630,25 +956,16 @@ IdP --invalidate--> SaaS Application (RP)
       <c><strong>Yes</strong> (back-channel SOAP) / <strong>Conditionally</strong> (front-channel)</c>
 </texttable>
 
-<t><strong>SP Implementation (back-channel SOAP binding):</strong></t>
-
-<t><list style="numbers" type="1">
-  <t>Validate <spanx style="verb">&lt;LogoutRequest&gt;</spanx> signature</t>
-  <t>Verify <spanx style="verb">Issuer</spanx>, <spanx style="verb">Destination</spanx>, <spanx style="verb">NameID</spanx></t>
-  <t>Look up local session by <spanx style="verb">NameID</spanx> and <spanx style="verb">SessionIndex</spanx></t>
-  <t>Expire matching session</t>
-  <t>Return <spanx style="verb">&lt;LogoutResponse&gt;</spanx> with <spanx style="verb">Success</spanx> status</t>
-  <t>On next user interaction, redirect to IdP with <spanx style="verb">ForceAuthn="true"</spanx></t>
-</list></t>
-
 <t><strong>Limitations:</strong> Front-channel binding is browser-dependent and fragile in multi-SP deployments. SOAP back-channel is more reliable but less widely implemented.</t>
 
+<t>See Appendix B for SP implementation steps (back-channel SOAP binding).</t>
+
 </section>
-<section anchor="expire-op-commands"><name>OpenID Provider Commands: <spanx style="verb">expire</spanx> (RECOMMENDED)</name>
+<section anchor="reestablish-op-commands"><name>OpenID Provider Commands: <spanx style="verb">reestablish</spanx> (RECOMMENDED)</name>
 
 <t><strong>Specification:</strong> <xref target="OP-Commands"/></t>
 
-<t>This specification defines a new OP Command type <strong><spanx style="verb">expire</spanx></strong> that maps to the Expire Session State lifecycle command.</t>
+<t>This specification defines a new OP Command type <strong><spanx style="verb">reestablish</spanx></strong> that maps to the Reestablish Session lifecycle command. See Appendix C for the proposed formal registration.</t>
 
 <texttable>
       <ttcol align='left'>Element</ttcol>
@@ -656,29 +973,18 @@ IdP --invalidate--> SaaS Application (RP)
       <c>Trigger</c>
       <c>IdP sends a Command Token to the RP's registered command endpoint</c>
       <c>Command type</c>
-      <c><spanx style="verb">expire</spanx></c>
+      <c><spanx style="verb">reestablish</spanx></c>
       <c>Token type</c>
       <c>JWT with <spanx style="verb">typ: command+jwt</spanx>, signed with IdP signing keys</c>
       <c>Required claims</c>
       <c><spanx style="verb">iss</spanx>, <spanx style="verb">aud</spanx>, <spanx style="verb">client_id</spanx>, <spanx style="verb">iat</spanx>, <spanx style="verb">exp</spanx>, <spanx style="verb">jti</spanx>, <spanx style="verb">command</spanx>, <spanx style="verb">tenant</spanx>, <spanx style="verb">sub</spanx></c>
       <c>RP behavior</c>
-      <c>Expire all RP client sessions for the subject; do NOT revoke OAuth tokens; require reauthentication</c>
+      <c>Expire all RP client sessions for the subject; do NOT revoke OAuth tokens; require full authentication at IdP for session reestablishment</c>
       <c><strong>Completes command?</strong></c>
-      <c><strong>Yes</strong> — fully satisfies Expire Session State</c>
+      <c><strong>Yes</strong> — fully satisfies Reestablish Session</c>
 </texttable>
 
-<t><strong>RP Implementation:</strong></t>
-
-<t><list style="numbers" type="1">
-  <t>Validate Command Token signature against IdP JWKS</t>
-  <t>Verify <spanx style="verb">typ</spanx> is <spanx style="verb">command+jwt</spanx></t>
-  <t>Verify <spanx style="verb">iss</spanx>, <spanx style="verb">aud</spanx>, <spanx style="verb">iat</spanx>, <spanx style="verb">exp</spanx>, <spanx style="verb">jti</spanx>, and <spanx style="verb">command</spanx> claims</t>
-  <t>Confirm <spanx style="verb">command</spanx> value is <spanx style="verb">expire</spanx></t>
-  <t>Look up all sessions by <spanx style="verb">sub</spanx> (and <spanx style="verb">tenant</spanx> if applicable)</t>
-  <t>Expire all matching RP client sessions</t>
-  <t>Return success response</t>
-  <t>On next user interaction, redirect to IdP with <spanx style="verb">prompt=login</spanx></t>
-</list></t>
+<t>See Appendix B for RP implementation steps.</t>
 
 </section>
 </section>
@@ -688,7 +994,7 @@ IdP --invalidate--> SaaS Application (RP)
 
 <t><strong>Specification:</strong> <xref target="OP-Commands"/></t>
 
-<t>The OP Command type <strong><spanx style="verb">invalidate</spanx></strong> maps to the Invalidate Authentication State lifecycle command. The <spanx style="verb">invalidate</spanx> command is a <strong>strict superset</strong> of the <spanx style="verb">expire</spanx> command — it includes all session expiry steps defined in Section 4.2.4 plus token invalidation and API key revocation. When the IdP sends <spanx style="verb">invalidate</spanx>, it signals that all prior authentication artifacts for the subject must be treated as untrusted.</t>
+<t>The OP Command type <strong><spanx style="verb">invalidate</spanx></strong> maps to the Invalidate Authentication State lifecycle command, transitioning the session to the <strong>Terminated</strong> state. The <spanx style="verb">invalidate</spanx> command is a <strong>strict superset</strong> of the <spanx style="verb">reestablish</spanx> command — it includes all session expiry steps plus token invalidation and API key revocation. When the IdP sends <spanx style="verb">invalidate</spanx>, it signals that all prior authentication artifacts for the subject must be treated as untrusted.</t>
 
 <texttable>
       <ttcol align='left'>Element</ttcol>
@@ -707,22 +1013,7 @@ IdP --invalidate--> SaaS Application (RP)
       <c><strong>Yes</strong> — fully satisfies Invalidate Authentication State</c>
 </texttable>
 
-<t><strong>RP Implementation:</strong></t>
-
-<t><list style="numbers" type="1">
-  <t>Validate Command Token signature against IdP JWKS</t>
-  <t>Verify <spanx style="verb">typ</spanx> is <spanx style="verb">command+jwt</spanx></t>
-  <t>Verify <spanx style="verb">iss</spanx>, <spanx style="verb">aud</spanx>, <spanx style="verb">iat</spanx>, <spanx style="verb">exp</spanx>, <spanx style="verb">jti</spanx>, and <spanx style="verb">command</spanx> claims</t>
-  <t>Confirm <spanx style="verb">command</spanx> value is <spanx style="verb">invalidate</spanx></t>
-  <t>Perform all <spanx style="verb">expire</spanx> command steps (Section 4.2.4, steps 5–7): look up and expire all RP client sessions for the subject</t>
-  <t>Invalidate all existing access tokens for the subject</t>
-  <t>Invalidate all existing refresh tokens for the subject</t>
-  <t>Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)</t>
-  <t>Return success response</t>
-  <t>On next user interaction, redirect to IdP with <spanx style="verb">prompt=login</spanx></t>
-</list></t>
-
-<t><strong>Note:</strong> Because <spanx style="verb">invalidate</spanx> is a superset of <spanx style="verb">expire</spanx>, any RP that implements <spanx style="verb">invalidate</spanx> inherently satisfies the Expire Session State command as well. The RP is responsible for invalidating all authentication artifacts within its domain, including any tokens issued by its own Authorization Server. See Section 7 for self-contained JWT access token considerations.</t>
+<t>See Appendix B for RP implementation steps. See Section 7 for self-contained JWT access token considerations.</t>
 
 </section>
 <section anchor="revoke-protocol-comparison"><name>Protocol Comparison</name>
@@ -841,9 +1132,9 @@ IdP --invalidate--> SaaS Application (RP)
 
 <texttable>
       <ttcol align='left'>Protocol</ttcol>
-      <ttcol align='left'>Expire Session State (SL2)</ttcol>
+      <ttcol align='left'>Reestablish Session (SL2)</ttcol>
       <ttcol align='left'>Invalidate Authentication State (SL2)</ttcol>
-      <c><strong>OP Commands (<spanx style="verb">expire</spanx>)</strong></c>
+      <c><strong>OP Commands (<spanx style="verb">reestablish</spanx>)</strong></c>
       <c><strong>RECOMMENDED</strong> — completes command</c>
       <c>Not applicable</c>
       <c><strong>OP Commands (<spanx style="verb">invalidate</spanx>)</strong></c>
@@ -875,12 +1166,12 @@ IdP --invalidate--> SaaS Application (RP)
 
 <t>Implementations conforming to <strong>SL2</strong> MUST support at least one protocol or protocol combination that <strong>fully completes</strong> each command.</t>
 
-<section anchor="rec-expire"><name>Expire Session State (SL2 REQUIRED)</name>
+<section anchor="rec-reestablish"><name>Reestablish Session (SL2 REQUIRED)</name>
 
 <t>A single protocol can fully complete this command.</t>
 
 <t><strong>Primary (RECOMMENDED):</strong>
-- OP Commands (<spanx style="verb">expire</spanx>)
+- OP Commands (<spanx style="verb">reestablish</spanx>)
 - OIDC Back-Channel Logout</t>
 
 <t><strong>Fallback (ACCEPTABLE):</strong>
@@ -905,85 +1196,6 @@ IdP --invalidate--> SaaS Application (RP)
       <c>IdP-side logout (automatic)</c>
       <c>AS-side token revocation</c>
       <c>OAuth Token Revocation (RFC 7009) or OAuth Global Token Revocation</c>
-</texttable>
-
-</section>
-</section>
-<section anchor="extensions"><name>Suggested Protocol Extensions</name>
-
-<t>The following extensions would improve the ability to implement these commands with clear semantics and guaranteed enforcement. These are suggestions for future standardization work.</t>
-
-<section anchor="ext-op-expire"><name>OpenID Provider Commands: <spanx style="verb">expire</spanx> Command Registration</name>
-
-<t><strong>Problem:</strong> The OP Commands specification defines <spanx style="verb">invalidate</spanx> but does not define a session-only expiry command. The <spanx style="verb">invalidate</spanx> command implies full authentication revocation, which is too broad for the Expire Session State use case.</t>
-
-<t><strong>Proposed Registration:</strong> Register <spanx style="verb">expire</spanx> as a new OP Command type.</t>
-
-<texttable>
-      <ttcol align='left'>Field</ttcol>
-      <ttcol align='left'>Value</ttcol>
-      <c>Command name</c>
-      <c><spanx style="verb">expire</spanx></c>
-      <c>Command type</c>
-      <c>Account Command</c>
-      <c>Description</c>
-      <c>Expire the subject's RP client session. The RP MUST expire the session and require reauthentication. The RP MUST NOT revoke OAuth tokens.</c>
-      <c>Required claims</c>
-      <c><spanx style="verb">iss</spanx>, <spanx style="verb">aud</spanx>, <spanx style="verb">client_id</spanx>, <spanx style="verb">iat</spanx>, <spanx style="verb">exp</spanx>, <spanx style="verb">jti</spanx>, <spanx style="verb">command</spanx>, <spanx style="verb">tenant</spanx>, <spanx style="verb">sub</spanx></c>
-      <c>Lifecycle command</c>
-      <c>Expire Session State (Section 2.1)</c>
-</texttable>
-
-<t><strong>Relationship to <spanx style="verb">invalidate</spanx>:</strong></t>
-
-<t>The <spanx style="verb">invalidate</spanx> command is a <strong>strict superset</strong> of <spanx style="verb">expire</spanx> — it performs all <spanx style="verb">expire</spanx> steps plus token invalidation and API key revocation.</t>
-
-<texttable>
-      <ttcol align='left'>OP Command</ttcol>
-      <ttcol align='left'>Lifecycle Command</ttcol>
-      <ttcol align='left'>Session</ttcol>
-      <ttcol align='left'>Tokens</ttcol>
-      <ttcol align='left'>API Keys</ttcol>
-      <c><spanx style="verb">expire</spanx></c>
-      <c>Expire Session State</c>
-      <c>Expire</c>
-      <c>Unchanged</c>
-      <c>Unchanged</c>
-      <c><spanx style="verb">invalidate</spanx></c>
-      <c>Invalidate Authentication State</c>
-      <c>Invalidate (superset of expire)</c>
-      <c>Invalidate all</c>
-      <c>Revoke all</c>
-</texttable>
-
-<t>The RP <strong>MUST</strong> treat <spanx style="verb">expire</spanx> and <spanx style="verb">invalidate</spanx> as distinct commands with different scopes. Receiving <spanx style="verb">expire</spanx> <strong>MUST NOT</strong> trigger token invalidation; receiving <spanx style="verb">invalidate</spanx> <strong>MUST</strong> perform all <spanx style="verb">expire</spanx> steps and additionally invalidate tokens and revoke API keys.</t>
-
-</section>
-<section anchor="ext-caep-enforcement"><name>CAEP: Enforcement Profile for Session Lifecycle</name>
-
-<t><strong>Problem:</strong> CAEP events are informational by default. An IdP cannot mandate that an RP act on a <spanx style="verb">session-revoked</spanx> event.</t>
-
-<t><strong>Suggested Extension:</strong> Define an enforcement profile that:</t>
-
-<t><list style="numbers" type="1">
-  <t>Maps CAEP event types to the commands defined in this specification</t>
-  <t>Requires the receiver to enforce the mapped command</t>
-  <t>Requires the receiver to report enforcement status</t>
-</list></t>
-
-<texttable>
-      <ttcol align='left'>CAEP Event</ttcol>
-      <ttcol align='left'>Mapped Command</ttcol>
-      <ttcol align='left'>Enforcement</ttcol>
-      <c><spanx style="verb">session-revoked</spanx> (reason: <spanx style="verb">logout</spanx>, <spanx style="verb">timeout</spanx>, <spanx style="verb">step-up</spanx>)</c>
-      <c>Expire Session State</c>
-      <c><strong>MUST</strong> expire RP session</c>
-      <c><spanx style="verb">session-revoked</spanx> (reason: <spanx style="verb">policy-violation</spanx>, <spanx style="verb">compromise</spanx>)</c>
-      <c>Invalidate Authentication State</c>
-      <c><strong>MUST</strong> invalidate session and tokens, and revoke API keys</c>
-      <c><spanx style="verb">credential-change</spanx></c>
-      <c>Invalidate Authentication State</c>
-      <c><strong>MUST</strong> invalidate session and tokens, and revoke API keys</c>
 </texttable>
 
 </section>
@@ -1210,18 +1422,269 @@ IdP --invalidate--> SaaS Application (RP)
 </references>
 
 
-<?line 800?>
+<?line 872?>
 
+<section anchor="deployment-model"><name>Reference Deployment Model</name>
+
+<t>The following diagram illustrates a common SaaS deployment where the Application acts as an RP to the enterprise IdP but also operates its own first-party Authorization Server that issues access tokens and refresh tokens to its own first-party clients (web app, mobile app, CLI).</t>
+
+<figure><artwork type="ascii-art"><![CDATA[
++---------------------------------------------------------------------+
+|  Enterprise                                                         |
+|                                                                     |
+|  +-----------------------+                                          |
+|  |  Identity Provider    |                                          |
+|  |  (IdP)                |                                          |
+|  |                       |                                          |
+|  |  +-----------------+  |    Lifecycle Commands                    |
+|  |  | IdP SSO Session |  |- - - - - - - - - - - - - - +            |
+|  |  +-----------------+  |    (reestablish / invalidate)    |            |
+|  +-----------------------+                             v            |
+|                                                                     |
+|  +--------------------------------------------------------------+   |
+|  |  SaaS Application (RP)                                       |   |
+|  |                                                              |   |
+|  |  +----------------------------------------------------------+|   |
+|  |  |  Application Server                                      ||   |
+|  |  |                                                          ||   |
+|  |  |  +-----------------+    +----------------------+         ||   |
+|  |  |  | RP Client       |    | 1st-Party            |         ||   |
+|  |  |  | Sessions        |    | Authorization Server |         ||   |
+|  |  |  |                 |    |                      |         ||   |
+|  |  |  | o Web sessions  |    | o Access tokens      |         ||   |
+|  |  |  | o App sessions  |    | o Refresh tokens     |         ||   |
+|  |  |  +-----------------+    +----------------------+         ||   |
+|  |  |                                                          ||   |
+|  |  |  +-----------------+    +----------------------+         ||   |
+|  |  |  | API Keys        |    | Resource Server(s)   |         ||   |
+|  |  |  |                 |    |                      |         ||   |
+|  |  |  | o Service keys  |    | o APIs               |         ||   |
+|  |  |  | o PATs          |    | o Protected          |         ||   |
+|  |  |  | o Static tokens |    |   resources          |         ||   |
+|  |  |  +-----------------+    +----------------------+         ||   |
+|  |  +----------------------------------------------------------+|   |
+|  +--------------------------------------------------------------+   |
+|                         ^           ^           ^                   |
+|                         |           |           |                   |
+|                    +---------+ +---------+ +---------+              |
+|                    | Web App | | Mobile  | |  CLI    |              |
+|                    |         | |  App    | |         |              |
+|                    +---------+ +---------+ +---------+              |
+|                         1st-Party Clients                           |
++---------------------------------------------------------------------+
+]]></artwork></figure>
+
+<t>In this model, the SaaS Application is both:</t>
+
+<t><list style="symbols">
+  <t>A <strong>Relying Party (RP)</strong> that depends on the enterprise IdP for user authentication via SSO</t>
+  <t>A <strong>first-party Authorization Server</strong> that issues its own OAuth access tokens and refresh tokens to its own clients (web app, mobile app, CLI)</t>
+</list></t>
+
+<t>The authentication artifacts managed by the SaaS Application include:</t>
+
+<texttable>
+      <ttcol align='left'>Artifact</ttcol>
+      <ttcol align='left'>Issuer</ttcol>
+      <ttcol align='left'>Description</ttcol>
+      <c>RP client sessions</c>
+      <c>Application</c>
+      <c>Browser cookie sessions, native-app session tokens</c>
+      <c>Access tokens</c>
+      <c>Application (1st-party AS)</c>
+      <c>Short-lived tokens issued to 1st-party clients for API access</c>
+      <c>Refresh tokens</c>
+      <c>Application (1st-party AS)</c>
+      <c>Long-lived tokens used by 1st-party clients to obtain new access tokens</c>
+      <c>API keys</c>
+      <c>Application</c>
+      <c>Service keys, PATs, and static bearer tokens issued to users</c>
+</texttable>
+
+<section anchor="command-effects"><name>Command Effects on This Deployment</name>
+
+<t><strong>Reestablish Session</strong> — IdP sends <spanx style="verb">reestablish</spanx>:</t>
+
+<figure><artwork type="ascii-art"><![CDATA[
+IdP --reestablish--> SaaS Application (RP)
+                         |
+                         +-- RP client sessions ......... EXPIRE
+                         +-- Access tokens .............. unchanged
+                         +-- Refresh tokens ............. unchanged
+                         +-- API keys ................... unchanged
+]]></artwork></figure>
+
+<t>All of the user's interactive sessions are expired. First-party clients holding valid access tokens or refresh tokens continue to operate. Background API integrations using API keys are unaffected. The user must complete a full authentication at the IdP — where the IdP re-evaluates policy, risk, and state — to establish a new session.</t>
+
+<t><strong>Invalidate Authentication State</strong> — IdP sends <spanx style="verb">invalidate</spanx>:</t>
+
+<figure><artwork type="ascii-art"><![CDATA[
+IdP --invalidate--> SaaS Application (RP)
+                        |
+                        +-- RP client sessions ......... INVALIDATE
+                        +-- Access tokens .............. INVALIDATE
+                        +-- Refresh tokens ............. INVALIDATE
+                        +-- API keys ................... REVOKE
+                        |
+                        |   1st-Party AS
+                        +-- Revoke refresh tokens at AS
+                        +-- Revoke/invalidate access tokens at AS
+]]></artwork></figure>
+
+<t>All authentication artifacts for the subject are invalidated or revoked. Access tokens held by first-party clients will be invalid on next use. Refresh token rotation will fail. API key-based integrations will stop functioning. The user and all automated integrations must reauthenticate at the IdP and obtain new credentials.</t>
+
+<t><strong>Note on deployment:</strong> In this deployment, the SaaS Application is both the RP and the AS. When the RP receives an OP Commands <spanx style="verb">invalidate</spanx> command, it invalidates sessions, tokens, and API keys in a single internal operation. When the RP and AS are separate entities, the RP is still responsible for invalidating all authentication artifacts within its domain upon receiving the command.</t>
+
+</section>
+</section>
+<section anchor="appendix-protocol-details"><name>Protocol Implementation Details</name>
+
+<t>This appendix provides detailed RP implementation steps for each protocol mapping defined in Section 5. These steps are informational and intended to guide implementers.</t>
+
+<section anchor="impl-bcl"><name>OIDC Back-Channel Logout — RP Implementation</name>
+
+<t><list style="numbers" type="1">
+  <t>Validate the Logout Token signature against IdP JWKS</t>
+  <t>Verify <spanx style="verb">iss</spanx>, <spanx style="verb">aud</spanx>, <spanx style="verb">iat</spanx>, and <spanx style="verb">events</spanx> claims</t>
+  <t>Look up local session(s) by <spanx style="verb">sub</spanx> and/or <spanx style="verb">sid</spanx></t>
+  <t>Expire matching RP client sessions</t>
+  <t>On next user interaction, trigger Forced Reauthentication (see Section 3.3)</t>
+</list></t>
+
+</section>
+<section anchor="impl-saml-slo"><name>SAML 2.0 Single Logout — SP Implementation (Back-Channel SOAP)</name>
+
+<t><list style="numbers" type="1">
+  <t>Validate <spanx style="verb">&lt;LogoutRequest&gt;</spanx> signature</t>
+  <t>Verify <spanx style="verb">Issuer</spanx>, <spanx style="verb">Destination</spanx>, <spanx style="verb">NameID</spanx></t>
+  <t>Look up local session by <spanx style="verb">NameID</spanx> and <spanx style="verb">SessionIndex</spanx></t>
+  <t>Expire matching session</t>
+  <t>Return <spanx style="verb">&lt;LogoutResponse&gt;</spanx> with <spanx style="verb">Success</spanx> status</t>
+  <t>On next user interaction, trigger Forced Reauthentication (see Section 3.3)</t>
+</list></t>
+
+</section>
+<section anchor="impl-op-reestablish"><name>OpenID Provider Commands: <spanx style="verb">reestablish</spanx> — RP Implementation</name>
+
+<t><list style="numbers" type="1">
+  <t>Validate Command Token signature against IdP JWKS</t>
+  <t>Verify <spanx style="verb">typ</spanx> is <spanx style="verb">command+jwt</spanx></t>
+  <t>Verify <spanx style="verb">iss</spanx>, <spanx style="verb">aud</spanx>, <spanx style="verb">iat</spanx>, <spanx style="verb">exp</spanx>, <spanx style="verb">jti</spanx>, and <spanx style="verb">command</spanx> claims</t>
+  <t>Confirm <spanx style="verb">command</spanx> value is <spanx style="verb">reestablish</spanx></t>
+  <t>Look up all sessions by <spanx style="verb">sub</spanx> (and <spanx style="verb">tenant</spanx> if applicable)</t>
+  <t>Expire all matching RP client sessions</t>
+  <t>Return success response</t>
+  <t>On next user interaction, trigger Forced Reauthentication (see Section 3.3)</t>
+</list></t>
+
+</section>
+<section anchor="impl-op-invalidate"><name>OpenID Provider Commands: <spanx style="verb">invalidate</spanx> — RP Implementation</name>
+
+<t><list style="numbers" type="1">
+  <t>Validate Command Token signature against IdP JWKS</t>
+  <t>Verify <spanx style="verb">typ</spanx> is <spanx style="verb">command+jwt</spanx></t>
+  <t>Verify <spanx style="verb">iss</spanx>, <spanx style="verb">aud</spanx>, <spanx style="verb">iat</spanx>, <spanx style="verb">exp</spanx>, <spanx style="verb">jti</spanx>, and <spanx style="verb">command</spanx> claims</t>
+  <t>Confirm <spanx style="verb">command</spanx> value is <spanx style="verb">invalidate</spanx></t>
+  <t>Look up all sessions by <spanx style="verb">sub</spanx> (and <spanx style="verb">tenant</spanx> if applicable)</t>
+  <t>Expire all matching RP client sessions</t>
+  <t>Invalidate all existing access tokens for the subject</t>
+  <t>Invalidate all existing refresh tokens for the subject</t>
+  <t>Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)</t>
+  <t>Return success response</t>
+  <t>On next user interaction, trigger Forced Reauthentication (see Section 3.3)</t>
+</list></t>
+
+<t><strong>Note:</strong> Because <spanx style="verb">invalidate</spanx> is a superset of <spanx style="verb">reestablish</spanx>, any RP that implements <spanx style="verb">invalidate</spanx> inherently satisfies the Reestablish Session command as well. The RP is responsible for invalidating all authentication artifacts within its domain, including any tokens issued by its own Authorization Server. See Section 7 for self-contained JWT access token considerations.</t>
+
+</section>
+</section>
+<section anchor="extensions"><name>Suggested Protocol Extensions</name>
+
+<t>The following extensions would improve the ability to implement these commands with clear semantics and guaranteed enforcement. These are suggestions for future standardization work.</t>
+
+<t><strong>Note:</strong> The <spanx style="verb">reestablish</spanx> OP Command type is used normatively throughout this specification as the recommended protocol mapping for the Reestablish Session command. This appendix proposes its formal registration with the OP Commands specification.</t>
+
+<section anchor="ext-op-reestablish"><name>OpenID Provider Commands: <spanx style="verb">reestablish</spanx> Command Registration</name>
+
+<t><strong>Problem:</strong> The OP Commands specification defines <spanx style="verb">invalidate</spanx> but does not define a session reestablishment command. The <spanx style="verb">invalidate</spanx> command implies full authentication revocation, which is too broad for the Reestablish Session use case where the IdP wants to revalidate access without invalidating tokens and API keys.</t>
+
+<t><strong>Proposed Registration:</strong> Register <spanx style="verb">reestablish</spanx> as a new OP Command type.</t>
+
+<texttable>
+      <ttcol align='left'>Field</ttcol>
+      <ttcol align='left'>Value</ttcol>
+      <c>Command name</c>
+      <c><spanx style="verb">reestablish</spanx></c>
+      <c>Command type</c>
+      <c>Account Command</c>
+      <c>Description</c>
+      <c>Require the RP to expire the subject's session and reestablish it through a full authentication at the IdP. The IdP re-evaluates policy, risk, and state to determine whether to grant continued access. The RP MUST NOT revoke OAuth tokens or API keys.</c>
+      <c>Required claims</c>
+      <c><spanx style="verb">iss</spanx>, <spanx style="verb">aud</spanx>, <spanx style="verb">client_id</spanx>, <spanx style="verb">iat</spanx>, <spanx style="verb">exp</spanx>, <spanx style="verb">jti</spanx>, <spanx style="verb">command</spanx>, <spanx style="verb">tenant</spanx>, <spanx style="verb">sub</spanx></c>
+      <c>Lifecycle command</c>
+      <c>Reestablish Session (Section 4.1)</c>
+</texttable>
+
+<t><strong>Relationship to <spanx style="verb">invalidate</spanx>:</strong></t>
+
+<t>The <spanx style="verb">invalidate</spanx> command is a <strong>strict superset</strong> of <spanx style="verb">reestablish</spanx> — it performs all <spanx style="verb">reestablish</spanx> steps plus token invalidation and API key revocation.</t>
+
+<texttable>
+      <ttcol align='left'>OP Command</ttcol>
+      <ttcol align='left'>Lifecycle Command</ttcol>
+      <ttcol align='left'>Session</ttcol>
+      <ttcol align='left'>Tokens</ttcol>
+      <ttcol align='left'>API Keys</ttcol>
+      <c><spanx style="verb">reestablish</spanx></c>
+      <c>Reestablish Session</c>
+      <c>Expire + reestablish</c>
+      <c>Unchanged</c>
+      <c>Unchanged</c>
+      <c><spanx style="verb">invalidate</spanx></c>
+      <c>Invalidate Authentication State</c>
+      <c>Terminated (superset of reestablish)</c>
+      <c>Invalidate all</c>
+      <c>Revoke all</c>
+</texttable>
+
+<t>The RP <strong>MUST</strong> treat <spanx style="verb">reestablish</spanx> and <spanx style="verb">invalidate</spanx> as distinct commands with different scopes. Receiving <spanx style="verb">reestablish</spanx> <strong>MUST NOT</strong> trigger token invalidation; receiving <spanx style="verb">invalidate</spanx> <strong>MUST</strong> perform all <spanx style="verb">reestablish</spanx> steps and additionally invalidate tokens and revoke API keys.</t>
+
+</section>
+<section anchor="ext-caep-enforcement"><name>CAEP: Enforcement Profile for Session Lifecycle</name>
+
+<t><strong>Problem:</strong> CAEP events are informational by default. An IdP cannot mandate that an RP act on a <spanx style="verb">session-revoked</spanx> event.</t>
+
+<t><strong>Suggested Extension:</strong> Define an enforcement profile that:</t>
+
+<t><list style="numbers" type="1">
+  <t>Maps CAEP event types to the commands defined in this specification</t>
+  <t>Requires the receiver to enforce the mapped command</t>
+  <t>Requires the receiver to report enforcement status</t>
+</list></t>
+
+<texttable>
+      <ttcol align='left'>CAEP Event</ttcol>
+      <ttcol align='left'>Mapped Command</ttcol>
+      <ttcol align='left'>Enforcement</ttcol>
+      <c><spanx style="verb">session-revoked</spanx> (reason: <spanx style="verb">logout</spanx>, <spanx style="verb">timeout</spanx>, <spanx style="verb">policy-change</spanx>)</c>
+      <c>Reestablish Session</c>
+      <c><strong>MUST</strong> expire RP session and require reestablishment</c>
+      <c><spanx style="verb">session-revoked</spanx> (reason: <spanx style="verb">policy-violation</spanx>, <spanx style="verb">compromise</spanx>)</c>
+      <c>Invalidate Authentication State</c>
+      <c><strong>MUST</strong> invalidate session and tokens, and revoke API keys</c>
+      <c><spanx style="verb">credential-change</spanx></c>
+      <c>Invalidate Authentication State</c>
+      <c><strong>MUST</strong> invalidate session and tokens, and revoke API keys</c>
+</texttable>
+
+</section>
+</section>
 <section anchor="changelog"><name>Change Log</name>
 
 <t><list style="symbols">
   <t><strong>Implementer's Draft 1 — 2025-XX-XX</strong>
   <list style="symbols">
       <t>Initial publication</t>
-      <t>Defines two lifecycle commands: Expire Session State and Invalidate Authentication State</t>
-      <t>Comprehensive protocol mappings for OIDC, SAML, OAuth, Shared Signals</t>
-      <t>Suggested protocol extensions for command type signaling</t>
-      <t>Reauthentication requirements and JWT token considerations</t>
     </list></t>
 </list></t>
 
@@ -1231,274 +1694,385 @@ IdP --invalidate--> SaaS Application (RP)
   </back>
 
 <!-- ##markdown-source:
-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
+H4sIAAAAAAAAA+V9aXLbWJrgf53ihR0xScokZdnOzG67lpBluUqVsqUWlbVE
+TEwKIiEJZRBgA6CU6pQr+g4zd5h7zFH6JPNtb8UDSHmp6p5RV6clEnjrt6/j
+8XiryZo8fakeHZ5MDw/UNK3rrCzUUXaZzu5mear2y8UiKeb1o63k4qJKb/Sj
+4+nR2H43L2dFsoBxsmWdpeOahxnnepjxTB4d50mT1s3WDP65Kqs7eKO4LLfq
+1cUio3eauyUOU8zTZQr/KZqtbFm9VEVZpFtbyaq5LquXW0qN4f+VulzlOc/7
+Q1Ll6t3sd6usKGBy+rasrpIi+7ekgWFfqmMY7/CNeluuijl9RM9UJe4+nWdN
+WW1tFWW1gO9uUpzi9O3+s93df5Zfv/v+hf71+6dP4Vf4/fjwzf5kv6zocaX0
+UcpM+yUsZdYofEDtTp4+4oeS6iptXqrrplnWL3d2Sng4m0+KtNmpl+mslg/g
+wOht+LdKx7s/PZ1cN4ucRrCHgD9jxQfwfqKmyYdssaqS4Js/TNTrKpnn6V3w
+xbuJ+gMcax18/Hqi5ql6l87TrCrDL/cn6l1ZNdkClkVfwVnCx8+ePns+3n1m
+DuV1Mvuwf53AFvKj8qpcNb0nhE+P5XHFz3/6gV3AYDMea5Nz8w7BbObZ+Ok/
+m828rQAsN98NPf7FtnOJo32x/Uz33h09i4DsXl2nFSJFrQBL1UlVNuWszGt1
+WVaquU7V8d70cArkYbaqsuZOmefVu6T6sFqqo6S4WiVXqRrgFEP1x2exDcN+
+gVLUkzKps3qMO50Aku7UMuxOnSzynRt4lX5j2Ie/xmU9Wc4ve3Y9naj9pEAc
+bsH+D+liGXx6OlEn11m+LJsm+OYAwDvJ08o7vaffjp8+t6cHh3OZ5Wntn6D+
+9B97YktZxWanBqfz+9XVdQAsZrvvD6dnk+nJ5J+ePh1/93z83N/wm+wqa5Jc
+HSKRxh0C7Z2neQawF4f0JWy2nhRZ3UyuypsdPSqAvf51HWyfTPYm6ndVAozC
+W/Hu9+On37VX/HrjBb9UezAhfjwj1kBIYHngu6SAtS/g+0/b2cVDN+YCJCD0
++/S2EX7lAjG8c5JWeZGGUL83AQg/Ta/Sop5dp9l8k8Paf8BhvQXeUNmDssTj
+045n9pn3jhKEw7ePT4xgEqXTgKk3sJfKEW0eQpiX8roVaR5CleHz/b2DE39h
+wDmarFiVq1rtzWYgvqiDmyRf8QlrWqwG+OLwgVwkSZebrA/OF5kw7Ifo3HVS
+pfNpdlUkeXCG/JWS74DXweu3ZfVhw2XV9HrNbwNvk7cfvsTf5eVFkp+VH9Li
+NL0pGW2D60acVkAI5WFFTyv7+KOe2c4mwLnncM11k86bra3xeKySi7qpkhn8
+dXad1Qp3lF1qijFPLxE5VHNbKiP2Kg0jwBGSBpDF4pOBwsHh/GSoZvBdDQKv
+akqVwBrzu6y4UidJBY8OTuEB+HxBZEhdMvbBLYiY7cz3H//+v1SV/usqq/B1
+ZEOnJ/hqlYLQnVzkWX0Nw+v3muuqBPpPz8EqFHKuEmRvAL4McUwleU7n41JG
+wPRLOIR6woeyyOYgWm5tPVaHRVOV89WMHvvlceb8+bH3yLa344e2vf0ljw03
+ub3dc3jb2xNcZlo715ZcXqJIt72tn6ajwYUg4cMhZ4y7MGACqLuEQ85y/L68
+VMsqgxPtOj+YTsFsd2pewvhF2cB2ZTpUSuqRWqaVKEXwB+0/JyYEf8m4ZSXq
+jVqWeTa7U7dZc50VcvGwnXtN5NS9ms4AHeHfs7slLAbQocquruAk77fux/rn
+PvjX/sBTsMxTB45EV4Rl36s9ABSAtFmewfr00VpZCNS7v+LG7tUJrxMF2qt0
+pKqs/qCYHIxUTqLyyNzMwrBdxbMfWsgM+PW0gQ/NSvT8I7h+QHn4l9jUyaH6
+kN7V+NBsBmpgg/cM5BwOOcVZRVLLilk250m3Hj8mxEACDZeiLu4U68lH6Q3I
+9r88tgpujp/UBOgO/KQFHFYKkFBeVbgoeOZOwa+w2opGnsnI5Q18ACeolz5R
+e42aHu2ODHICl8tXaQHswQNdUMVSVRYwrMbmxEiaszzJFjURBSEF6c/LrLIj
+1OoWTpG+NIANUJeVc1j5XC/imV2EwTeLIYifMDkugwgNEp/ULNEhPHSRABCo
+tFsigw8BrnRSGV7Cc7sEvErYSTKH1cKjQKLuYFsMUBobkZPWCBICWzWhGoBj
+npe3RBnpWuoVbAJQKMVzgI2kyexa0UUiMgNs4LJR0Afoc+/93thJzhBFC17z
+u3JO37kAA6AmO9Hot+WjVhvROr5qPcgoASBCYH8G5w+qbw10iIAB77x933zd
+FkBil05cAEZDrbWcAU4gwrwH4YXGxM3VaVNb2LvJkjbIDc5h5vOROn9fNsfF
+cbV3CQB/PrQnV/My9SaehZt4At+P5ymRLj0vAt+m8BXAEwODB3Qu4N6rNzAo
+XJLdIp5EhNrhBGvIkMP0S7wDu2dLjywtkgN43ncAT1y4lpvFz3GlBvR5i/xH
+DVuFowEib64oENzu1b4/5AUAAh4BoRRtYVXobQF+ynmPgGnfZLOUKSpTb29e
+nArl1J3p9G3/zr1N1XpZTHI7bJGMfe+S5RJxGKgv/j1e8N8h6WXpYq6IHbZk
+D3gJr4eFgq75BlPQy5mwI3OuhYDECIJls6cMoZptdSDxfQ8ubw8AaxTsClgl
+0qnhtkNxDN4BFqpLYF4W+V51YnwUz33c6+bt8M3Bv/x4eHrwBv4U6Hv34/RM
+prK8hEQ6OgXALYRNRFYYk2HFGT2QO0fMJvFOE1Z/qtRB1HCdm0gBnWt2hFuz
+bhLlHEEBZoe/LKQGuwnXM03zSzTXNQnBG40E8PWzOjs7kkd21XW5qmQphuWe
+EkkDyc9flTeaHAgvzznhQZ2maFyifX8/DOjI6xI0H4MJHqbJgAbhXFpCJ2RR
+31JZfIARP0B3f9qNzuJbUBmKVZPWX/c4tuiKcOdkHAC5CeYT7sHqGGDxmMQC
+ACmtXkzTCncJj9JZXIAKhIICUAqSei7wXGNcgU7wAWxhj5GbjCZmFc6HegEg
+ONKGcfwUdwI3cOFdbrKG0vWN/v74TLQWtSpqlMwz1IwuHfOOtQsP0snVZEQ2
+UASWcVaA/EWa1HR6PFx7lHr1AWNepKDFzDVu1UzREBqc5fJdPg/u8mKV5XOC
+AbxnojquSGiu2mdstbkKy94i7JFtLQ5hamNQakw0E2JaQLOtSQyY6w3uEg/u
+l8eFfCUsCoiKui2rOWq+eDbb2yP5DW+E/7LkC/+a/n7v6Mj51T43/f3xj0dv
+3N/dMfaP3707eP9GD/Nu7y/4Cy5we/v45Ozw+P0eoiVsHYHyAiUkkNOWVYrX
+SpBVz6rsgmHrl1/EI/bxI++Yhd8S1LY72GRj//qIN+bjwPY2bV3DM0gUoPBk
+l3faTJFpsEFdwOiLgxWAn5U5QPZCa1FeJvPhBNYTGqg/flT/53+/aE+uGYMI
+CHkuhALn0ooGmxqa8goAElSxKoVTqJGH4+pAFgaQSfXiCABAzAyBOcU7Z1BE
+OcHZCJyuNhQI/ODGYQZgC6jRod6OAjfIbM6QxdUkJCVakJ3lqznRsbStd498
+MgladnoJU13HtWHa920KIGDIGioRlcrqesVgkOBKV3mD+3fU+W/q4AC6Vgsk
+CZUfsdLoM0EB3NAqzYbg2XlWw9ZnWrrxzBw84GCdgQSg4zBGDEWL3IxQu9xC
+29EaVN3JLMZHUacOBMFJFaXKywKtKjRFG0hfE4x+jwwrNHIAuQmf3qenv1MD
+q2AZ+Q9XCOjUMCzTy+Kmppd2Jy9G9M+3asBs2NgqhhpDzLm2sXOeMj4jmJJu
+nMyYmpWVA7agkDkQgEY1uVs4eLqcppFbJ4Bk+LC3Gb3swAuT4aE2YhmDwS7u
+xOy2iZg/aR3KLu2d0YPswbD1PTUD2o/zAoMQqL9AC1+wXORoacUIY+gDQ4cP
+pVdVUuiNa9w0h6AvLZ27B9mQ+ZL/lIkm2hkg0s51cgMTwTUuiEt7gLBI7pB8
+B9KSsOw//OlsyPd2CWgO3JNVzPbhMOkEwvBDekfngrA8zrObdD4i1AM8jR6V
+IMgAb4qYd+TchnxwdDY1kR9DpeT9b2rnROC9i/Q6yS89jjCxdEtoIOyZ5Az6
+kEhCTYzelxQHJ3tn9ZApn2zkIgW2V8kDE/VjkWcf0GuLToOWskocku2mIFvg
+Ni8wjoRutZCXaGcjehQfqJDpw/GgdBEjwHhldKVAM0iT0iTUnbPLLMZMBh5w
+DL5EYzWJ3pDGTejGNXGhOycSS9oro2TM+B6xttPlzlDsobsRjxyu+QIZm08p
+fGapEahFRoiKYwiG0O034sLBK0+J3tKrVv+Fk0D5lB8//5XZ2G/OVcqsoU2R
+mca+QPpp4nnoo2f4kQ2Y4M8mz1vEU9OFwd50KIS0digFYUkdwCOzFxcoPGKR
+oLnMETQA5ny5gDaokUWVtwU8jmOWF4j6pEm7S+yggwekwOOaS5XKRRhTAaKd
+hTjDsMSSM7LHPlR1KVttmFxrHsi6BVKaAwPgBPdkV1RF0qwqQig2S5KxSsxf
+UYuF0LPE0UuAZpCpkQ2PSEenR7tDb8IMBRiK7ModJxOB34h5S4HxZo6xK2k7
+A9on+G0bYp5PdifPJ9+L9ZOXRMy2w30l0CLfsa/LwYNa40EtnJAByapkaF90
+kDBLkcPmdcmUvhIOVKvQ8T04PhkiruDqRfmPu9cEnyatne5O4tjxDHf7FhW9
+OSwtCVWAvRYVQIWjQI0fYCCbXTt+CtJGXUUuUYwvcTrSWGtSlV4l1TwXSQaN
+vOnPJGZcsQMhkFEZrtlDYB7U4pnRky8Q31bENs/EE0HfaYM0gFh6iy6/RVLd
+hXPMgO8uyuJupPEWhGmNpO5jwLnTnxseWNg9jnqOz/2E2HE+ErkPNCLSReMD
+oGoKJ+YvHkjLXK2WuFWyD9FRf64tQ2/fFZHZrdgBBROYx5pqnhsXIVntSZjL
+OnxCDCp1p0zNwKd3IebtB0OesUREZFHtgtLCcWr9+gZw4tClavizvsyMMvGN
+OKjm4QsE44W2+QCyA4kEkU0f9IKP4H1JgBFFBXHaaK8fmy4BcnnqFoQTaWnv
+V4PSwAO+82RW0T+L6nw4UbHDRnqLEwnFvURF2LXxFWnKNjDXIpyX6JFOrM1H
+a3pC8Ykf8kN63SQzAUbNyvJDlsKXNfvFT0/G/CC7k4eObq3jImJ05CvAJUsW
+37LIMG3S5fjHZYBOD4VMIYTX2RUaKdhViSsyYALwSDcgUUpGOl8Dn5aoiVmL
+XKJsCiF1awXspGi6gMSHbkGh1AVfgLKRyi5hU/XqEtSzjLiv3ZIx3bWu5WwT
+igkML09nooytlvPEm30kygIOoL90IZmJqgPoZPRYwhkCPYenvzbNOhVJ8HMU
+UiM7MqaXIgoymfBkzzY+RIRJwk9XGMGAQk9e9VUiqykaFwr5riJyE+84jNQR
+WcglAXDKWrmjLXJKAKmGTNhCoeWyHW6DrksRouKykZipHclnagUfXMI+H2sm
+at4DZKEue84LPgFP2YczCLWH65IxNmIvAKqXLMkzgSBHUjYhB518DSyeQF3C
+MYibrWrHvaZ13qhSYFk/KwYVpmFUvi4gKoBRCURnNXFJoQlwGBrGKMigWtXN
+bVk113ehzIb8CHidqDLa0jGxYomW6wuyS92kVmAHHbjStj4DneQNx3OpU7FB
+6seJZXZaCx+tkYMeAUyCBiF0z/eKaCtiO6KuPy6ModiqwF2UY5ehiFyVO05U
+o0akGZlrHUF6hqSQvazW7OoQmlKMISAtXmLKCl6CqGiOgWIkAIHjgL6HVr6k
+gBFgglWxqhnn7WpY+zLToVmALtiLxECcT+Wk5hmg4Qr5gA0BIjjFrBuGU0fM
+I2LZpItlWSUoDBC0oWXeXLDmEKKLe0ZuFiseYNGv15r04fs7YH2LTos+XS8F
+GgluTmxIDJFU1IHFxjfSqx+TtWnUJq1R0GgrprvfTr5lgJnCEoBsoJ9rfFwA
+sZseD+kQFyn6dLN6Iewksl2XHQARRq7eEZxJZrbVRY07JNAQwrNALr7M01Bt
+7T4tHZVVFsDFNd+drypD3bWIawSZfimMd+Mr3j1eJhCCytrxTmVa/7aSVWv3
+bQ7xDKRoOA5tEYhyC2AKW491ZD16IlvRKL88bqXViUPxs7U4iTu18YcM8nHX
+k7XZ3yZ3rGdgdFgktDCj0MeUmDjxI7Z+kkeNREtLGGuONbY4z/HCInLpSOFE
+bW+DWE/hqwsMt9veNkBhTTtkwbGBvh0amVgMPElkJHIzY7IJT6c5VgVFgyfM
+W69BqyHANGQeJM06E7uM5yOjc2M5ltZsvKryYMPbD8aATQB577uQseHHtcS9
+4FUATZ6XKTtNeDocBHCRpiSbHIW+2uMSHYt2jlPB9kZ4x+z5JnyAYdJGBAh8
+G03prJtkJLtjbCuFVC8TPHNAeI0cFCSlw22dyKo9E1k1kdhwXmyGTnHHfJzk
+JoCntqZ1VhuYYyyWbNkVd5wcJ8kX9jTJr02BAXwRJtHT06vpnvVE2rEkO4nE
+9KOQKAD6wr1f0b2IenJYAVHsVY6WoUtyxCR1yVZaMo4bIwFhmLY0AEKJyyu9
+Tm5QZEB+7sAch6u7QbES6m5Q0Emjze/M64x72j7gRHssdaqJgaCLTEKD/CVy
+YKP3WQ/hFWSOAT8o6zUclbrJQE0Rat4K0edoA03YmHS9yZIrQE+HKNIqxnP+
+HAjj3/72N6DVsyxDPJHsDv/nSSTo9kn0yXulfix8F4W6/1VH3G58iOhksQdp
+vugQ7nLW/sSHGHT6IId/x1WYn5tPHuJTj9O+9xta/4FhnPzkBkM4z3zqKmLT
+PPA4ncdNLIEj20au8yuvwvw88FK/7HHKr3usFXYv8uuugn+/d//4710jbD4E
+C6rGrvlJQ3QupWOIG/Mf5d1s7JL9IZ44h/fEO8onHSfrv3/PPrwUY6rv1XRV
+EyPjv3TaBf35leZvHUUbkNqAFaE0PjiFgNQGNsM+Blr1qlJQwoGbt3/CR8zs
+wKANZesgBfBIwNOGyDNZprDSjslrvK5SL5FJxDfk2n2JTCBY5iu0P6WVYxzJ
+pYzC1r1NqSG+fm/T0mjYQ7aF37NttFb/TUl8Su0E17ez1tzw+liKDcct707U
+/nU6+0A1IyQ8WYAuTMdgb4MaANQhaSFLU4UZoWW+alKdMIMJLo/2MVIQR0S/
++KFkrYy1Xf0RPPJjwfHTc4mffjbR8K3DqDW0098x9W5m8g0e/S5tjG9UcwIU
+7sg6bWfOSpM9M48tAsU0jVayDItm9MGmcXOwph8ymBsutrrD8JQrWo9vc3vk
+DThXOxJ2z8vB53EFAYTSMn6MgRKRCMYFgNqkqgkGBaQcWZW+pElIpmRZkkTS
+pY7W9QTKmmJZg2W83N7eel86nqisbtrJjlrBPGHdQH98nbBofZf63n4073QZ
+B3kj+OZFip40cy+knTXB6HAieK1wKiJ5i0eOz0xioLUrGumGVjzIHNbYlLaR
+0UUiz0Uxeo250tCkl2KBgZvBFdthElcfIQ2OAw/9M8zQPMxh3awFaitQ2wPA
+L8Y9bAhlMRfmSMW9dXTaHX5tGszxUKCBwIOGqmLvSCOWZvZvunkLzyffDa0j
+zo8EcYcaoGMk5nEzEVstJ69xwMYPgmM1UavXQSZuliDuLJFoERODBWsgD4kf
+ZcWPYrII+oIAC7PGxvfx3uDKrdGnceO34DQw/B4gLZWFVACBq3mWkg/PeMYx
+Lt9Iuqhls7+3FQdtY/S8aRiq3+39heeQ6L1N4rMus6puxkvyWfFUtQ+XOOiM
+sntNGB894IUJ6wB0ygUmg7hvL9rejmE/hulbgnLIcS2OEb0GiFWXSZaLgc1K
+BuhGqUNe36mu/8e//8/v4pFNMS/X88mLtpfLQ3mWxDW+u2Qq8RQWPx6hdkzq
+5PrWYaHsx6INevFoQVS7ATVJO7H5cDqwTN4zzqWRsbCFSfUTgXgND8bDVAOe
+NanMKvDTdq5WrQCYXl+wyB/BgX1Tx9Lr2R7mO9bmKzLPNKHoIiFxdzpUWMJ0
+yMBFmVDo+TOyjcgzYnuDOTwLojzkxJ5iak52tSKbnOQOS+Be92Zxyr1AgJIJ
+F8nP2WK1MJdmDP4VGrDIauGFeOkV9ZzsmUVsE2HLuKFD9c88rGGRW2iHtRII
+7wR6KkFPSKrxSJkg33nkGEN/uyKS1ACDcjQwewFqsmuK2e4OHMFoClkAQIfU
+fzABFRmw4p5IPFpygu5wAAWMalMXq0bH2msp0ZceeJ5yuSyrZlUQkJRyyeJl
+daRcL3hEH2oNmJHPrdcM3ucgN0kO6AinZL+NCMQb40VtFEYEqFRUSdwlgq1L
+5wNwwFsQiJCYcIIAGcCRnQzR5zBAEpDi8CKA0H0bXYIIrS8OALRJjO2z8TRW
+dnBuQoMG19rQXi74sGY+q/0BsrGEajsUNhpHEnJXWNpMHMPzdMYuEnPJpbBS
+Dlc0nNaPm3kx4ciZLgHKi3Dbwkh0kyLDyQ3mRsUk35WyrPUQk0tIUaEwM7yH
+BmftjDYuTwy0nV1T0I/2jpSzD1SLRH8AoiZqtnCMyRzTYrASEJmYWDyl4fGA
+heYKOgr3WcjldBcNakUPCHl+5S1YPmQAh+WR6bzxQ/9bcyDIL6kSjzybLDBa
+jp1obLpHDLO6HqLYXk/hH1Hmekus4COE26SvZI6eR+4PVvQQK/ge16d06zsd
+TI+eDX3CtABQhvXcIEU2EXGOSWJkorvZP++poULJ14RkCOWyvJYY6Kpu0n6+
+EToNrINnAS9zvhVetuTDW7KxhmD0qlktX8mZ4wiz6q3jHvuIdpi3iC1oZ/Fs
+MO8pusWYWu7jZhZU2cO93jvbsco505M05oFgRV2jQN2hCJJ5wB1ZTL33ToVF
+A222lhBL5XOeg/+orQgpWo8whXCG9s5aU+GvJHzTkbVn3XLWac2abYErZlTy
+DVGGBgww0cEf2TWSriOO9wHBiVVeIGTzp/Asrw9B3HC+dsBWbLr20T/A+uO5
+LOlSzcnHQNNGfvNR3PfbBnqNATibexubzdc12vH7o7/QkN7pt89me5AtFukc
+T2aoa2FZIuZQ4VdMf2BRVSOWw81RuL3u98D0O7EV6dGJYzZ2yyNZauQYlsdC
+tyW4hQ3PYpXKtX8fGYxc58ieNHMh55S4Hp5O5Uaa6lqw0xp4oJbBYnZsVrc1
+JJG5OrQRh8ba0GpKlNP7fy5lRhW90PhCb52IHK1mxh6N8ECVjGIlUWxdWRPX
+KKU4hC/TqA68OzTH8mJ+hTUjNq1am7D3e/slzel7Xzt1LLqtnHxn95+BZ53f
+cHmpNV+bq6idejfvUJtr0IB9Ielw+GErDyh6LKeG//MFOOjTy1F4IRQsQyIM
+H8vR7hP655n9B4PEgoNkFwmydhx0LCHngD1/4qw6P9Za202D2L5oJNuadCUK
+qhE8vwQNkMJsSgoGI1EU8dYEwLMVTP5kAbZqroF6I1KjJqljT0Qqn9kcV4w2
+RdOpkecpfQZUOgk78kJ4JJrpHOv6LRuM8F8kP/+UXOnslZ84N+p86Gb0fFOL
+DVHkdlPcKizyEVXSqNYlTD6eOZ9+7E5G0hk6t/H7WZd/FAZb/sOzkba2dPg0
+nwNmVa5LT6LjJMawTDkE9JfH7vEhQ5BvNCTDn2gtxW3FzhWo87baKzbJ9TN1
+V/hhsfY6tiAYSavSbmEWL9uNfPFsAiEj7kYJgHrkrguSeF83YSWWf8XpKpS5
+YrZyYWItU9oAMmURaKXyCxV44WwSa5NvbRWrrlKVC9eSRUVA3PvRwVprIE0S
+bLmESGAHZQgIqpG24EDLuwAFXdlmKGISPbcl0wi3NEQ4siDanbUtCA0CvjeN
+iUBubomuGEhHwQbrKiWBiV/NUetEXYLSz2r9iji0BCgoGybMSHMeJT/W2Ijp
+dI5hDpzFFKaPB0z3mPCEKEOPwFHxruX2ujDGh21dT0Eo56/RRFCcqwHa5MgU
+eU68FJlP8etHoP2mj86ldr2xtmtAg4Mz42DnDm+Yw/okIfkrGMUrH5rlKdVn
+dVZL0a2XSFuYKbthieyCtUVCtR6OtLCq0OaQiDkyoTDHxdJk0eMlmw2gSZTA
+5hj9YZZ3UC7SivIUEJaJhxgq2k6yM4GL2+qNDqXUqCS5e5aWoq7vcia5cNzG
+ax35Gdx0Nl/CJR/a6PeQB2yAmjEm4JJ1e5iGLmhSFwMmJxhVQwGK0BWaqDpN
+myZ5uiv9T+mSpm6l4Jrxz/Jr4c1xO6nhzughWy0/9iVjepy5CaPDv24GZpuL
+6vOXY+/JkiTvX+2YgqliXdsj4aVk0tpjfJgPag0Hjp7gp/PgKB+KehM+NxUV
+ZxLMsWdBp+5mprZgfy2oBjsgDCBNwWTr53cOyQgFLZCjy8qwkbUJr866KPP1
+KyW+dvJogRGXO8fRby1/Nn5eUNHRHnmDmgHKUTfAA67crEc8nBMLgoiCYyIL
+jsGBHjr1ciDhCDDgPp37NEQUBfGH6ILkuc5b4w+GvdzXIko3342fiklNpDM4
+NTJ/mzswhWFPoc8lgEktGRJzR20wzoIAcLjQIhfoPecqzcxpOlVkQzjJhzH/
+2FvaYw3lfGg9j94iHv0JPYB/HbR03QCeOGTrfUQoJJ9IP4XsOCohkeu3460m
+QsujFPNB1UgeTmziNUkILzerSNI+YluVxIrFZj7JYecZ9cFwMh4Q0QrT6rL5
+uS5lA0RNJI3DYp7+fK6zuIfdZEwu0iFjXdiwjo45wn+VzlKO9XqQi3LSNUrx
+IEN7OOReEVjexWReVi3nJs1LiFyxDnmaXq3yBBjTHSfji81RrCQ4HRljO1S7
+ONG0uNNJNLvuQMMFGWLN6PfqncldvVcHnMroVd6ORgOzzQ3hhoxtgdoDW9tB
+ZUUUgF8/PdfGxDpWYJ4T5jhndjo9dsrTr6xpFkCRp4ooUqZueN1tObnf2goR
+xACFy8MdXYsmOSwwbbFx9SyK16l0rm9sSgMGLaTkwq1Wz+jGy50AIYdc8fGS
+yhA2FlLZ++qVIqEJdXFbOEZ2HnpL1Oau5TJNpGAFS1vOYGxn0lHk+3DDCQgB
+vs1Of/ZRm/c7rHb3fcE4973xHV1egJNVtSzrtBXlbQIadQTzAYgB5Do2coFU
+CdDc3nrR7nXZSM9joBsb9ESG6NqIGl4PIjFJslKxf8svA4qocQRjEWaH7D/W
+9nKKJGsDmknmjHoJNK+iiakLBeyvNZOx9q84gjrG9Xh4B0/Y8aJNZgyNrcDZ
+e/WjyM3s5tKjgAyN4I1CdDCOfYNAkqXzlO/PVb94PHZQSfGaqDzk+XUcJDO+
+iguJ6QCAwOP1XTB6DmK7jHq8Uw9NtPfCGlQw8RPOgY8dxrBfjaLBauRjko+d
+YZbOsYTD4GIj+qHrlPKCSnpdTfb3QYTjEjF0o1AGa/jp0PENWR8AreCPJni5
+BSyZp4Lf6y5uXLQvYjk3ECvRQjZRg8AiGq/VDs4KYrhMryTN7y8Yebg+q1Pc
+mMWLoXzVRU/090EJFXaV0lBDcfLqFhin7g5dOovfjt39A8WlSnSR3Or+7h3d
+Vef6qLDRTbTfq0DJVHuxagkMlAjrTwnH294WaT1qh0kzsmHY5O1I15B53LmH
+DyR86X4LoZ72QS3Bp7eBV7eDVesYHLFknB2XccCF/RpbpBsfSMVxg2ZpGPN5
+KkGw0aQFCrq6uFsmGJiPUOC44x7QEqx7b3vrq/HgvTqUY6L2qGtYnlKZgwg/
+y4wZdY6LZL3QQTyTxWMEfErWwqowPyc48Mgtl2c8kxEPhq59VzuhduiWMElB
+Gzgj3OZg2mrFxeujRl5TKGmW1BIGCy+acgEdPoS482DkemA7Y6hbKS2d5tPH
+HZ5xnyBd3AXRcTYGJXCfn3Wmy5A406Im/THjYfUyP6CFjgJThjKsqlLrOHci
+Emf6yXaG5B7eVBfRqDupRkgcHkxF3ACYSBDb50V0uFLFohWL8aotxpK1zobN
+tFYYJhn8Z1jfQzI8O3kaBYbxJczjNXNdKu2lgr6KS3GxMJetz0oF3WDxUy8i
+95WbBumRYRBxOOb2VbTHW6BIPCh19DPA4X1bpnq1BkaQLWw9dsrhaDngjakl
+yX5wFoY+Em2LwQg8s0CRynzD1hRHOAuqPLKwJI27trfhpDnyzaFjHSkVrRZe
+6cLELSfR+3DssSRELFnZNWHqeoVU8icS5SZ5EVfZjV497gv/DZJQ3LyTL57s
+kJiWkQ6pj9d+E9FR6hl1FoaSuzPd51xSEMkKfWZqLRms/hqpJMi+/VQSjrD3
+G3Q4aWV+HV414M1YusuFHx+SKtXhVoYTwvSGlzDmhm1mqZ9hVd7WJG5TeWCb
+r4CpzTfpOFkunauwKQzoadDFySS87cZemhuRAQsJVB0HQcbV0kTgiXmTaEPt
+wf4I+b1j1dyVLD2uE7l+p1vPvBdATi5nOrw6tBfUakBlvOxmRHocaXrQeTLD
+recTvdde4LMoH2Y2Px9uvZhwvhKFdki6mEtPzKSsERj+pG8H7apmyZh+HAGX
+wELKjgZKb5RKmbFkX26N4tW27W5jYocyyS6DTVqQmAYqXt8R6psm0VZUWzDI
+QK1sIU1YpXT6pO5HO07zIxsw0gOQHDOiIdI2OY3BI6oBdGoCXPpSXdM2QNMy
+L+9wqrGpMjYU1DAeJS1juyshJCJrq2mOa8p/xMz2yM/byd2BlAfPxO6WJQGx
+DXnPBVcee9DpGN3+MjyPezfMTseY0SirVm+g2Ihsp+4Xq5jfW3W0j90jQehS
+mpyuZyXnMqVinbRClhs7YKnnAzqLCQ/ZmA96ImYvI+wsG+kGFfWyyS+YQdbm
+UD0lPNanzvUwF6Q6/+/xlUO/OLIFWQ+PwwW+6H4xQOzwzW8nmoDjWwbFQxni
+s4j6d1+AXX4/AaQvlySQoOJ4VVE1C1ywU4EgyiuRV+iNdXPEPe782X5F2ZaA
+uvg8y8K4WK9yMyHA12ZhBPYP4V4O1DswEuFhCOYCC/1A0ysQPDeDeE6G9QB8
+UNSglYRt32qqGIVG1Jlcjnfm3QyWzunL8VYnuWUNf+16MsJhJSMoxl/9r2Lc
+tT3PA1grNnRVBzcEVYPp0fMhMtME1CGCYdSx9xB4qJWxMWw6LujligVVGoff
+kUJI0jVRV6r3HRnCaKiPLBDpeXlb1MhtF+1rp/5dpHlghRnQw5a0Hamwgf3U
+5U30KRBlsIX/veLxLuDqeiS3SWaqjzNQid6GsXZlnuvvHGxFUFoZfhSxPshp
+yjkGVojwaJI+I1fPgVOsh708NOKcHqLDVawJgV3zPjRtet5TB8bU+XXTLOuX
+Ozv17DpdJPUEqGqRzSdF2uwAh6cr3sGd7dCv4+Zume5oU7GksJ+zhzsTZTad
+lVL93QZHdBtVrCfASouWWJtz0DZ1HI37z1M/Yorg08Bx3loXrZnIPFce12Z+
+AxdU19x4WqxTAd/g+sQ/UaUDflXkH2nEYaNbzI1SBWa2XOuIW52J9Wja8bgx
+2F3cIb4/Okdt6JxWTh56eHixtEvnZpdNq1EYV4K2EmXrECXcTGPwue15MGYq
+ca4Rmuo/t8F0RK0GIxVD2Cqpe5PqwP01QryPNr4w38KaYlNT6//nKJS1UjH3
+bWeLfbrlT19yBGB6Fx2BlJAury2O8Q+lBc6a1tIDp/eK6RmmMX8vpgO5G2bM
+1zD8SRTAHa6PCjgUQNepX0cKuNi6hSMEBtOJmLEq+PJeYE3/5ZSWjHjgQs9b
+8BeMf87S1k8EUgh153yr5zbMS6AtRIBzkb6irwatnFrvJsvsJwDbcEJbKMnA
+qBP3cWLJ1hRQC6/d8WKMa/3ZRyaTe025QHfVnfNMoj+DZw7c7go2JcQEUZAL
+XnFzVLgrrL4x4X4icBnyvfjjKQeRhCWK2fVd3m52J7oVdDcYzDVD3ctwKaqw
+p6t3Euoax/rEJGN5fdrqOxBDq7LAuGiHqJP3QNaf2Mo2jDR7U66I30jNOdtI
+p7gp8xuuzYh157CdgcIcguHI343k3yU2pZqZ9oq8JsGynIOSBbAbm0U2tOqR
+/YdEQe0vwchRojv23RxgpxoGsaLxY7V+FclaQiaqz4MPEo/d1jO0J4N3uSrI
+N04XaYVZe06R05AF4GCgb02cqHknwLTB3gzwRDq3srtWSrG/UJMWMxdUM/sp
+AOu+jlty03HNI81EueBhDDYSuKchwHTHIdJnElRWJuCKV6m7FgHL4uYkvK+h
+p/6aXu44i56ArWPubYyI3OlScjYRwBacTXI47/kdAzwcfJbeMN1OxM7lN6MI
+kkCJIf21yXR/3gFFTUg9jqGOFgIeNF9x2qsTAnZJWX5XV9QDjUUVWC+WswrA
+izV0s8u6zKkDSTpLGA/0Fya+i06dl4XczsnPklMzspymbceVtLyyAFDKR5iI
+uUZE4x5YTZXNCA1B2UupOVdMI5IeLsLp2b4ZuNoYbaisdts+4IodDlpI5I5l
+81ZVpb4co+hiPJttt7+SO/2sO4XoYGuNvpMXQyYKFxgpaDsWVakNoDLCFd6r
+SDVS0zLaGokQaM1y0Zh7FhASQhpT8ssGfWocEQnMqT9jrb6BnTqMKntfAiur
+iLdJRQ3kWzAZguJ4faCbbCqy3dhGXOJArvtN28V7O3cv1MTy26pHplVM7Eyc
+rmdcilJTGRvchpguNJNiD22AOXX0s4Y9t2Sv55njPLCrtEirJI8pSJjIcxf0
+cSq9LFPeRCtCwmlUtWcJD4NH3UVOnZhWAe9avcAalyi/vJg8g1+o8C3T2DAF
+7haZuERt03Bk9CVKteXk2ryDPcGUKHlp/j9eyGeoYTqFVpKl7jovG6AoemzS
+2pANcnubpSvNnLEyBC7CAIOetNafY80kGgQtWNyHSx7GCiNUpFC4Wku80YYq
+g1YOTRviclDqgvVcYiCNu2Q86qzCtqWmYEyeScovbAEXXzKU0kZKbFZYczRw
+lTqpXBMtzNJeqeaJY4pmwm++CuVT26DMSHbh7Q+CO8fX6NKHCEPmVkw/Kz/l
+SYOFRdlwfPe0ScQkhitSn5BI7/JEVJYzpU2KrOzEgVBH0IUpSYHE5LDR9ZlF
+nubQcSttlmZWggVTDwgWf1ta6QpjqmzMK1UXf53MPoxRgyrSXB1xdBZCog+H
+6lGEzD0ieiFwgvADVBZhwr60tpfnwO2dJqREPDpArrJFlidVfjcS6zYXhXY6
+XbpdKvlto5zh0szI4hVre+FG2DAiM5swK/cDx4FWwolOOmPCkNnEqIHrgXcI
+wplnSlgajO4kAPF2g3pxWuqC5+70ToXuBqYbt/6DDU1zY8ywdvymEWYsrnUC
+0eD0YP/43buD928O3gyDw7iY5VwUwk0xQECXesQ4ngzHo30k/8qBtJ2jjJAV
+9mA11Tr6I/SpkJ/X5IRdWYleLEOWKdFDdTmukKShFnqOvsAZL+cnDmD8aVWB
+JEvD8ptse/jDn85Y5D1/xDaNRy/VL4/Q/hU3f7Htyxl+zMPjax8/nktNQ2nA
+IO5fEwXp9Lc0uZOUA2iaUx3CwfP34nMybe3u3TCTFqAM6iGwqmZG1XFomh0a
++RVgFAUUVW5kj1PCs+1CwvL8TnCG3x1PrIYC6sap+FtJ7vtLWkt0HeOErTMR
+Q4d7rFYEdGZJGvTP6rW0FgzJO4nyLvC+Bb28aUHv3v7+wcnZ3uujgxB4L9cA
+L433daGX+wGTXSKjlplqWWaFuKMtDJ9f4lK6IBe4EbzZ4DgATFldn3NpCoYh
+kElsNC22OKS1C5ehHKYWSO1jHdAwJIHGFKrEXbbZ2OKF962DhH0bMZrfCUwQ
+oyPdVscdEovkCtEY40oHU++YdUjE5QUWmmZL2vb2EXb9Zb8+3uBbMn7A1p0h
+ZzlowWTrz6q57kThjCnjUXyczCnV0JdSLW/CWUrKIYgoXdSkNtuS2AKT1OLj
+2eSpkr7B6wESdLB8XOdlF1RyAwlgUCB0pDWwSlse/MVXIavnv+JFS5GN35wj
+VE5P6JZfc5YjPP/7s7OT8anURlQDgtWxACtlD06P907UAKmj/bifIv7qPRz/
+4RuY0JAvCl6GNVI6h+17QuMEgTXOOG4ONYxmVC0z0vmvKLGGxBg8vN8Isd6Y
+xvor5HXvuNO+kuQ/MaLYM+WMQJlwLfn0zo+OdAgX3Eap8Pyj6OE+ovNVEUcE
+XWxQouKyCMkVWilA+SI723iKVbN0BCNIo3TB3vqoZ2nFRSpI0EUxjtSxW7gl
+VJU0MSctLELwp3GCHzkHvQFdq+IYxjl8Y4s8agPjSzTIG2w77xVsyqXOuqw7
+ecTJWI/88aMErsdL1HORgOMTYxIjKWN721uO1hC1atklLbbiJLhTgDm9fWPS
+wRIrSPKoUU6SiyRU6djwryKG6R32ymFa4IV3iN0RAnhncx9cVY+ABh+81CM+
++estli3FMkWpoBstDv5GAP8gre9sxqi4/4RtYmWn1Rz/YRT/KaM/soRqoQLv
+w3/Q9IlP8Iz4K6i1WCJiJIJcp4i2Wfxgn2z2ykj9HSK97uPVFWXwDxbU1trK
+uhUwitBydK81iG5tXDE8p8HKIIBgMyRPY3jszLa97WHwug23sHnkmAaDdk19
+ll+2LnrbdnKEsJhOYEO3uUs+pum3vpot/U8699MRM5xlkydG1xnjIiXrE43D
+CAGyeXbEZv/np3zuJf7XJnwO9LcI38iL94xELyetPnIjTRP7oo9HhkaGpZU+
+nfqtw+KHUUKvs8/3Qq/zSyqBnZCVGy/ZjRVFzzEqWxK5HNaI8mrzCHUzBmyv
+SI9vsWITJD+gnaq6Gw4Z9o1dktSzVe34izb1egTlpuxrbp+J3wbf8HX/Vuky
++LW5bfysdYFs1vttd+Gqcf/Hkc/WpXVjoK7hAyCUukiLZT/+gp1fvP9q+KJX
+u2xt+uH3pf4PaJylQKVxPyZ32ldAqkpcz/yUoTqss4PTt/sKrbNDPRQOPQBG
+MqabGkZmkA6BsfF/l5cXWEounMYdGzFc7MebDa5rRTQS1t99O6MAK2vO3GZn
+R+qYcdG/I54DErfIR5Ncpdx6mSb3YNt1ebQbLLeAqlU36EmMjT6JMFGiV50w
+tMMQMT06tgZEPKRXn+ENHHKY+cG//Hh4SkYPW+LHMRPqdHo2DJkM8ciLXZE6
+vDOCEoToXj8BEKJuSArmZIMMFqHme6/uHAecoZnWx9Vj3JeOakQMyUtWe8OG
+frKij07o+KqbJMuRFpPtiVxCtkyXCZAco+bstUVDmbXnsBBTNOaqgYMzw+3t
+LywEDdBeh6ybkmFmZVnNqQ8yNrrTkSN702Ho26HGQkYUUucnx4CIOzpqTsQc
+jsEjiyb9/hNKQj9dZ1iVj+gfsSzLKkQHpyJi8PgrDH5y/dbYudEB+irNpeIY
+LclEcsFgHMjlySBe/lxmG/kYWiXGc0cIcjKm1mTKCG4QMxOZxJA8p05Mt0xV
+s7XHwkQXgnxdaDAFdd38pUtlabquwOfsW9/iXh7kicX6CXelGE05s2V+A2Ip
+EGpM32GeqFPlNfw5S7kBgcxwMnfFX+o2ptfUNX0qOs0Oh5MPfLJRlNZw+SUu
+hKPVtUbRCmtGF1MsMnvLiWxXBz7lcZeI19nOZqP3ramRhDqyPQkpu7hDk1iy
+yhtjyKhdgoZUFk3bdL9cIRXLp9pWxI4NY/N7MbdhIsQt+dkKi+oSVHnWfAE2
+myo3wVIoIBCQ4d+7xIuqTOazBOsLbz1ux5UAA1pQdcVfHoshY1zzJ7qYmxei
+ZVkYwvf06Bmn3rYFeB4k+7e0luhuo2V6Mnw7GCAUzmNGHmkst1beNw3o1snQ
+vZK1FJb1OKZrnhjKhfseGLz5WUsp4AKaTr3h2OAuO5Y6mf47G042MFD2REPX
+E1d6MgVzYyLbgzY1bYvu1PYZBTstw9o2vS5Bi1tk3LXFPKhcBsr4rFrrcrwP
+X291cR1n3dK+9pGt05biAHUWKi/xtcSCubyJO3j715o0YGMD5GIdO5x2sjaj
+rW1hAA7eEMc7uqaMC5IcuYxTpZ/hTzBeONDdMKZeqsaDvoZJqEAnWaPTkVQJ
+ep6AKlM0lSGH1ChBk0Y7K9scw+gdFObdUMfuECKkg0oTbrY2z8L8TlUzFPeQ
+Zp/jIJ86kdK8njUb+w2PVQ+9xG87qA71JAC0pcpqrleaB7Uoh4pkt9NtI7t+
+x6kgM/74oM156pOP7260PhW+D085/ZnlHHKIplfJ7A5GZpW+tX82J7hzt3W1
+r2NGiBoO2LJqo3F6grU+R8ff8iv0tZX5QbJqSpTnZtJstivjZhNbEmDgGoMQ
+0Ykp2kb3PduopG/xC/uebRRg66+3DUvz3Pis17JaK9vgdFVkoCVgmYU8TzER
+DSW/9aGPXtgeCm42IUx6ouk2RkHauonbpeXNTFetWKUENwtGYhzdS6UGkboa
+BTqebVqraHrZZUopgBdIUQVbFsnP2WKFlbsBZLGcAgiV8/JWzVcVt6hHYTLx
+0yx5OK8uH4ezSt6HOi7Gb2h6SxTIckPXAjoIrw1u5vRExz57U4S2cP+2TJNe
+OFXsfCGJDA/L921XjcUSag705twRTVK35C98nvJa59hSM+CRxA53ptO3TJVs
+VTivS6g+8LOzIzLpNxXskesUGH/A5BmJ5VN01KdXKFNxWwacM6WWwWdVMk/L
+y8teaTugHlwjwt0e6JPu/riaZAMC4JVUm0+qsTltVA6mTFgAjggq5lyYk95W
+A1NWxSQQ/pw1d1rwPeg6t41nhYPEbNALSoqQNFPnzO8dcDJkWRlo8+/KxIVv
+CnSIp8RROJmXpBxCJg7ZC+DQ4UOMEe/0rRPqHGlMZIwAkBg3Ta4LtJg8C0by
+ByyyH+2lWhOptrpN8wUWxdErDmhAWK24d2pzoHTzd9bkZzVVDflmQQ74EyPk
+Br5HVEHq3h4ZIEpfJd7uv0RoJWkQf9tVQGq58P9r3Hcd2zXx6sKNzwdSyECD
+5EKyYRRGLVXLKqvJDKzlY6x+QlN9q0AcXbHQCFvJimxBynlsQqJCxU0GGMBV
+e2wRMqmSSY2B+LidWuGS4k6+WQkNZpmn+5781D8QhlLJ+napkrasOfK801p5
+pBaAAavKbShMXmJewiTKuhz4EDOO8Ks8o0aRiSnVU9cr7jKHnYTWct7RIyeI
+jGaxuf7rSMDAktvdodfgspLeW5IJWRZeyZeJSCSStN8SPXQ6/0fOoDvDUA7O
+GZUvbJ0z07K5rkEYdA4JQersaKp2J8+Q53BXM05ke8cPU3nNKz3cUbsDgJtJ
+61XyVQMOERipd3v733CsK2Ue+U/p4MGJ5AEuQXGkJfOpdc7aKrZQlAV2/UGg
+0iUJah7UgxQcEOl3tE9OpMOBRG9iDrsGQ4nu4IQGnABDgMd07JSPSNR15kZa
+YFwMqH1XhGGwwlXxoShvi5GsxOxFTJaGh3NYI4fTYIyyMQGt64vB6zpwTJlX
+yZLiMV+3wi6N+RHYXMwqM1JemKdx+Q1JNMO0ZlMsFEh5B5qA6Is9TTzdzk4M
+sA50lL5ldZ1aDwH2vjGhn+od5r8C3Dv1LCkltuU/A35+BcxSgci4ohhEnfC1
+wONJkqkTUOqUvd1zOvpy8mcttfvkNhxSTG6XVcMOHpZHxEeDuUyXWVU3EvUd
+o1IiO2DNtnq9AwJbI0YGZvs/XNlteoEkFOhleYEGbfp9/+gQQ1T/9re/wTZm
+WTaGd7ae9JlDN/55AixIHdiz+NQfZGVf4ofG6drakweOA/9rd25X9PlDxxkA
+kAxbXz58nPiXDx+nfURPZJxWgfO6bxybsWOCM+HDser+vycPW87ATS7bcYTS
+YWvnn3H3N61xvsBP73o2/HniHBJRK5cwDU7bMNW1FrUGhj5hnM/Y2hN3HPif
+uyshi5stJxjnk7cVjBOFx84dP+kch6xn++yctQcI/9kF0s1dVoPD7RrHZN77
+40Q5St84rZ37E7e/6xinVH8CVmOcT3qcMqhwtME4e7bErDtOUO6of5wvdV+f
++vP14AeNpD9gtKl7J/ehRQ/zLfvPubVi/0Db33WMU9KMusaue+8nhyGn6B/n
+ZO+sDp6lj1naB4l60/VwNV9TsFReMB2oNxnni9zXF6GHX4pfdPz8jw1+N5vr
+Ged+g9/XjPPEWXTX75uMc0+UCKkIdgJ9x3Iv/Y6Cb2RRnePY35glmd/jm/vK
++6Ifyyf2RcTv/rn/YjI9aAq2G7eUGqI6MaEEgpl7ZXPNpalJY3cbiKN8orPL
+gk5agfqE1p9VnbYyLajDyPRYRl+nSum5RJnSilKsBHK/arVenYp2GrN5IZzw
+PNf+l/a5sZniZVDz+RAXjvy7swThfesX/msrUhEaiaE76b1W9x/QX4WdbUH1
+aE8G3bVXMsV4nSlcSzPOqcaT9p1wQXI44N2WxnopNczlejhXJChB3TvfUVlc
++dNRhCycfHsyWIF0J6cegP62trza1v7BTb268si5bOvdsJK8s10E6TqouMhO
+FUIEytx0jBq2TlnKD5GLOt79UfcGlkQm1/f+MlT18bmxGwswHv8mrk1s9RCX
+zq+A6sSAb6J/1MGfTw5PD/oH8GFs4v2ola4MvmYRPuB80hgGBCbtH2cMopBo
+T5VcNrzpb+pY+yGOqZPyFRP1NmK1uS5zcodwn7F1fW5ME6vGWJsm5JJ3mg2w
+nVasw5yX0FX/mCL7iPaaqBwpctlfvYUg0O8TtVGfak6jUBamOUnZtoTcpD9o
+AP1OcEYH8NsnHg773aC/FvIP3/9x7+jwzd5ZN/SvBf4Nx+gF/k3X0Qf8pwd/
+PP6h+/3uU0Lpxsoxe9M124i1dgCw2+i9nc5WDjyCQduNMzqDon9OtedJcG3X
+KTW+jdplbyViQUZC4k99jAHvJv7NKVB/dHG1PJcKuXIv0sTNQ256ijoLXAJ1
+kuRdB6k5S402jPEz4euE816+YuriOFVrsxzTRm7XhKjvS6xhVjgmdKo1JoKj
+/bRfetS+50Q6y+5NnWRdt/hq4gdGxZKOR5w7bFMl+hv3ePFaRLwxjsDEFPjr
+oBenXJpFF6Mm6zD1zZGHsBYDxadI4+1MF1uzbkDp89QJguL1R2F0DncGv/Y7
++m0Mlx+jCKJFQ+VofnmcSIKozc6c83e6foR+AJ1taOfG22u4sm5HNqkttu0W
+J6Rw83bNRPUtgSRWLDflgzMvRJ89pQ1HZWLv6RWGd7l+Vony6QpAo6Sjk/AI
+fnmMQ0i5sN2JaQRPZ+iV7qLUb+w4qZIrOPOaaxr84U8/TLHjzB/ZLxgkLXOe
+MmUIcWiI+KNr7C9zBEI23JzfChoNNUAjOG/ZrblFvWW4XIOp69JmLdgI6djS
+DqffIeY1637qXX1P2/2KtrrLBVFPytZ5Dryj52IwcsZOESH3oNulfMxJuwfL
+qg8eKug+jcTE4p9c2Oa880TpOOUhvgq3Bk70XHW1eeoqhYWzY7VxOAlsyiWX
+zyVkCZtEfenz37RqTC+Al2EvF/cK/AoBmwF6c7c8R2Km0+4p0R8voQ8T/Ix9
+ugydta8RA65jn6uRO9/dUJ5RFugxeD/6yp0qELVFoAEn53E1AKr9bqJHqJ+X
+U/+kD6m+N3Cg650L8U63/unvet8uQ1t33V4Jkf+it+3s9+952Z/Wve6fPrl7
+3T//HbrX7T7tBuLd3S8MxSz5UQCJxCB7oMul052a6R5aj6hVAEZSeEGTgTyX
+FahaUpFHWw5jXSHTBISnNM9NS4Os/pJimNtcE7fgm3sATrX5MB5H/QWKb2AI
+2AouiwKOjNR38DMgRS2BYKn5oxUKY79St+UKlBU4eyBCLAslF1kurbltEBuH
+y5noJ2KJM6nRqJuF4LlfrRJs44ZxfW6auIh8XMuQlp3pulOXK6JJcJPFPKnm
++qywN8LEha+zVp2gsApSJga/goXJGwyekwq05Ur6G/rV0ZJaKn3bNKCWCKtx
+swfapEucKzlTuwMCg0jlMxud6iox3tImDxII9DGcupMQBLTFAcx0KQEHFvpQ
+O9dgisd56OgVQ+YnKOgzXu3LOaGu2lBYnhqGi9mYbDy86R2LGFFymmvv1SAp
+wrjhwDB1m4j117SqN+YBnQrh0YVIMyhJhZLCdu6RUwyhVFoKbijpKMFHgfZv
+MzQY6CTrdvqNW6GpwHDvWG26oITT3mxWruAC9Mf4iOdLMC1ObfVmp+CzrZXv
+F3z+tPLOpmfLRnZBaSuCGXV0fRwZW3KDSGP01OZRQ+J1ZHG0orDTH3Xy9ylD
+1YpOVV3ZzaaC6q6UyjzFehBIIK+zJW7cs2piZtgnFVpr6xBwhdIDicsR+E98
+Um21La8qkbpvB5HZCBYlOaG1G9xwH+tm5/9ECg8EqSYBdsRLB2ox8YkH1vfK
+NB/1f98Ky6KtL8nlts0YuFKQM2GQ2I7X4NXruA86AKNnk9r1BvQFJWJ3eUBw
+5iSTzpqAbc+zSwqjbbjSVo3SorYn+YN60fpaOGzDwivHIOWtwTYsYSjrBDKS
+2D6lP4h0hn2p3JDmE6eEg75tC4bMFrl3rH0pZIxen9iWicpWkZgo3cGdM+K4
+ZIQ02uQwYXToIsJ0tfbjDuRGmDMyHC7jjfDXIlqjAifhRsnvsN6jXTMxAVMA
+0ly/Y41rC0PcTVkqYohUhMZWIr1O1gQJRraOIPdP7nhNulW5axfryVbQ0vId
+D2ppxIFfbqOXJkQa77WOesCJUyA5cR4pUe1skcqvzIt0FZJhJ82weSSmDUSs
+I0Ks6GnfmmT6m6zMjbkL/W9VuchqXs96ahNPKrOLc83eASrxAqONMr/2vKjK
+SNfFo5I6dNEfcEuIk4r7l4jlF8SRN1Vy2ahd4l/Pnj77dvznP8P/gCkqhf6G
+jJqiUKdIAev/C2YC+mMmCwEA
 
 -->
 

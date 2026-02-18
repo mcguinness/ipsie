@@ -109,20 +109,30 @@ informative:
 
 --- abstract
 
-This specification defines two lifecycle commands that an Identity Provider (IdP) can send to a Relying Party (RP) to trigger access revalidation — requiring the RP to stop relying on a prior sign-in and obtain reauthentication from the IdP.
+This specification defines two lifecycle commands that an Identity Provider (IdP) can send to a Relying Party (RP) to manage federated session lifecycle — requiring the RP to reestablish a session through the IdP or to invalidate all authentication artifacts.
 
 --- middle
 
 # Introduction {#introduction}
 
-This specification defines **two lifecycle commands** that an Identity Provider (IdP) can send to a Relying Party (RP) to trigger **access revalidation** — requiring the RP to stop relying on a prior sign-in and obtain reauthentication from the IdP.
+This specification defines **two lifecycle commands** that an Identity Provider (IdP) can send to a Relying Party (RP) to manage the **federated session lifecycle**.
 
 These commands affect **session validity and the continued acceptability of prior authentication artifacts**. They do **not** affect roles, permissions, entitlements, or authorization policy within the RP.
 
 | Command | Scope | Typical Trigger |
 |---------|-------|-----------------|
-| **Expire Session State** | All RP client sessions for the subject | Logout, inactivity timeout, step-up |
+| **Reestablish Session** | All RP client sessions for the subject | Policy change, risk signal, logout, session management |
 | **Invalidate Authentication State** | All sessions, tokens, and API keys | Account compromise, security incident |
+
+## IdP Control by IPSIE Level {#lifecycle-levels}
+
+The commands enable progressively greater IdP control over RP sessions. At SL1, the IdP influences session lifetime only through assertion claims — the RP expires sessions when the validity period ends. At SL2, the IdP can send commands at any time to require session reestablishment or full invalidation of authentication artifacts. At SL3, the IdP and RP additionally exchange continuous state signals. The following table summarizes what each level accomplishes:
+
+| IPSIE Level | Session Termination Model | IdP Control | Artifact Scope |
+|-------------|--------------------------|-------------|----------------|
+| **SL1** | Time-based only — RP expires session when assertion validity period ends or timeout occurs | None — IdP sets lifetime via assertion claims (`exp`, `NotOnOrAfter`) | Sessions only |
+| **SL2** | Time-based + on-demand — IdP can require session reestablishment or full authentication state invalidation at any time | Direct — IdP sends Reestablish Session or Invalidate Authentication State commands to RP | Sessions, tokens, API keys |
+| **SL3** | Time-based + on-demand + continuous — RP and IdP exchange state changes in real time via Shared Signals | Continuous — bidirectional communication of session, device, and risk state changes via CAEP/SSF | Sessions, tokens, API keys + continuous signals |
 
 ## IPSIE Session Lifecycle Level Mapping {#level-mapping}
 
@@ -131,7 +141,7 @@ The commands defined in this specification map to the **IPSIE Session Lifecycle 
 | IPSIE Level | Command | Requirement |
 |-------------|---------|-------------|
 | **SL1** | *(Not applicable)* | Session lifetime set from assertion; RP expires session when validity period ends |
-| **SL2** | **Expire Session State** | **REQUIRED** — RP MUST expire sessions on demand at IdP request (same RP behavior as SL1 expiry, but IdP-triggered rather than time-based) |
+| **SL2** | **Reestablish Session** | **REQUIRED** — RP MUST expire sessions on demand at IdP request and reestablish through the IdP, enabling access revalidation |
 | **SL2** | **Invalidate Authentication State** | **REQUIRED** — RP MUST invalidate sessions and tokens, and revoke API keys at IdP request |
 | **SL2** | **Self-contained token max TTL** | **1 hour** — when the RP cannot invalidate self-contained access tokens on demand (see Section 7) |
 | **SL3** | Both commands + continuous access signals | RP and IdP MUST communicate session and device state changes |
@@ -139,7 +149,7 @@ The commands defined in this specification map to the **IPSIE Session Lifecycle 
 
 **SL2 conformance** requires that:
 
-- The **Identity Service** MUST be able to send both Expire Session State and Invalidate Authentication State commands to Applications
+- The **Identity Service** MUST be able to send both Reestablish Session and Invalidate Authentication State commands to Applications
 - The **Application** MUST process and enforce both commands as defined in this specification
 - The **Application** MUST NOT accept unsolicited federation assertions (e.g., SAML IdP-initiated SSO)
 - The **Identity Service** MUST enforce authentication method requests from the Application
@@ -174,13 +184,19 @@ A statement from an Identity Provider to a Relying Party that conveys informatio
 The server that issues access tokens and refresh tokens to a client after successfully authenticating the resource owner and obtaining authorization. {{RFC6749}} §1.1
 
 **Expire**
-To end the validity of an artifact (session, token, assertion) so that it is no longer accepted. Expiration may occur naturally when a time-based validity period ends (e.g., an assertion's `exp` claim at SL1), or on demand when requested by the IdP (the Expire Session State command at SL2). In both cases, expiration is a normal lifecycle event, not an indication of a security incident. {{RFC6749}} §1.5, {{OIDC.Core}} §3.1.3.7 (`exp` claim)
+To end the validity of an artifact (session, token, assertion) so that it is no longer accepted. Expiration may occur naturally when a time-based validity period ends (e.g., an assertion's `exp` claim at SL1). Expiration is a normal lifecycle event, not an indication of a security incident. {{RFC6749}} §1.5, {{OIDC.Core}} §3.1.3.7 (`exp` claim)
 
 **Identity Provider (IdP)**
 The entity that authenticates subjects and issues assertions to Relying Parties. Also referred to as OpenID Provider (OP) in OIDC and Identity Provider (IdP) in SAML. {{OIDC.Core}} §1.2, {{SAML2.Core}} §2.2
 
-**Reauthentication**
-The process of confirming the subscriber's continued presence and intent by performing a new primary authentication event at the Identity Provider, rather than relying on an existing session. Reauthentication is triggered when a prior authentication is no longer sufficient due to session expiry, security policy, or risk events. {{NIST.SP.800-63B}} §7.2
+**Forced Reauthentication**
+An authentication intent in which the RP explicitly requires a fresh authentication event at the IdP, regardless of any existing IdP authentication session. The existing session MUST NOT be reused. The IdP MUST require a new primary authentication ceremony, the resulting authentication context MUST have a new `auth_time`, and previous authentication context values MUST NOT be relied upon. Both the Reestablish Session and Invalidate Authentication State commands require the RP to trigger Forced Reauthentication. See Section 3 for the full definition of authentication intents. {{NIST.SP.800-63B}} §7.2
+
+**Session Continuation**
+An authentication intent in which the RP requests authentication and the IdP determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements. No new authentication event occurs — the IdP reuses the existing session and its authentication context (`auth_time`, `acr`, `amr`). Session Continuation is the normal flow when the RP needs to reestablish local application state (e.g., after local session expiry, cookie loss, or RP-local logout) without requiring fresh authentication. See Section 3 for the full definition of authentication intents. {{NIST.SP.800-63C}} §5.3
+
+**Step-Up Authentication**
+An authentication intent in which the RP requires a higher level of assurance than is provided by the existing authentication session. The IdP evaluates whether the current authentication context satisfies the requested assurance and, if insufficient, requires additional authentication. The resulting authentication context reflects the updated assurance, including updated `acr`, `amr`, and `auth_time` as appropriate. See Section 3 for the full definition of authentication intents. {{NIST.SP.800-63B}} §7.2
 
 **Refresh Token**
 A credential issued by an Authorization Server that a client uses to obtain new access tokens without requiring the resource owner to reauthenticate. Refresh tokens are typically long-lived and revocable. {{RFC6749}} §1.5
@@ -206,121 +222,281 @@ A mechanism that allows a subject to authenticate once at an Identity Provider a
 **Subject**
 The entity (user, device, or workload) whose identity is asserted by the Identity Provider. {{OIDC.Core}} §2 (`sub` claim), {{SAML2.Core}} §2.4
 
-## Reference Deployment Model {#deployment-model}
 
-The following diagram illustrates a common SaaS deployment where the Application acts as an RP to the enterprise IdP but also operates its own first-party Authorization Server that issues access tokens and refresh tokens to its own first-party clients (web app, mobile app, CLI).
+# Federated Session Lifecycle {#session-lifecycle}
 
-~~~ ascii-art
-+---------------------------------------------------------------------+
-|  Enterprise                                                         |
-|                                                                     |
-|  +-----------------------+                                          |
-|  |  Identity Provider    |                                          |
-|  |  (IdP)                |                                          |
-|  |                       |                                          |
-|  |  +-----------------+  |    Lifecycle Commands                    |
-|  |  | IdP SSO Session |  |- - - - - - - - - - - - - - +            |
-|  |  +-----------------+  |    (expire / invalidate)    |            |
-|  +-----------------------+                             v            |
-|                                                                     |
-|  +--------------------------------------------------------------+   |
-|  |  SaaS Application (RP)                                       |   |
-|  |                                                              |   |
-|  |  +----------------------------------------------------------+|   |
-|  |  |  Application Server                                      ||   |
-|  |  |                                                          ||   |
-|  |  |  +-----------------+    +----------------------+         ||   |
-|  |  |  | RP Client       |    | 1st-Party            |         ||   |
-|  |  |  | Sessions        |    | Authorization Server |         ||   |
-|  |  |  |                 |    |                      |         ||   |
-|  |  |  | o Web sessions  |    | o Access tokens      |         ||   |
-|  |  |  | o App sessions  |    | o Refresh tokens     |         ||   |
-|  |  |  +-----------------+    +----------------------+         ||   |
-|  |  |                                                          ||   |
-|  |  |  +-----------------+    +----------------------+         ||   |
-|  |  |  | API Keys        |    | Resource Server(s)   |         ||   |
-|  |  |  |                 |    |                      |         ||   |
-|  |  |  | o Service keys  |    | o APIs               |         ||   |
-|  |  |  | o PATs          |    | o Protected          |         ||   |
-|  |  |  | o Static tokens |    |   resources          |         ||   |
-|  |  |  +-----------------+    +----------------------+         ||   |
-|  |  +----------------------------------------------------------+|   |
-|  +--------------------------------------------------------------+   |
-|                         ^           ^           ^                   |
-|                         |           |           |                   |
-|                    +---------+ +---------+ +---------+              |
-|                    | Web App | | Mobile  | |  CLI    |              |
-|                    |         | |  App    | |         |              |
-|                    +---------+ +---------+ +---------+              |
-|                         1st-Party Clients                           |
-+---------------------------------------------------------------------+
-~~~
+The Reestablish Session and Invalidate Authentication State commands affect RP session and authentication state in distinct ways — one expires sessions while preserving tokens, the other invalidates all artifacts. This section defines a **logical model** for the lifecycle of a federated authentication session at the Relying Party, providing a framework for understanding how each command transitions the subject's state. The model describes the states and transitions of **RP session and authentication-artifact state** — it does not model RP subscriber account lifecycle (e.g., provisioning, disabling, or deleting accounts), which is addressed separately by the IPSIE Account Lifecycle (AL) levels.
 
-In this model, the SaaS Application is both:
+This model is **informational** — RPs are not required to implement these states or transitions internally. The normative requirements for RPs are defined by the lifecycle commands in Section 4. The model provides a shared vocabulary for reasoning about session state and the expected behavior of each command.
 
-- A **Relying Party (RP)** that depends on the enterprise IdP for user authentication via SSO
-- A **first-party Authorization Server** that issues its own OAuth access tokens and refresh tokens to its own clients (web app, mobile app, CLI)
+The IdP and RP manage sessions independently of each other — the federation protocol does not bind IdP session state to RP session state. {{NIST.SP.800-63C}} §5.3. This model describes the RP-side view of the federated session.
 
-The authentication artifacts managed by the SaaS Application include:
-
-| Artifact | Issuer | Description |
-|----------|--------|-------------|
-| RP client sessions | Application | Browser cookie sessions, native-app session tokens |
-| Access tokens | Application (1st-party AS) | Short-lived tokens issued to 1st-party clients for API access |
-| Refresh tokens | Application (1st-party AS) | Long-lived tokens used by 1st-party clients to obtain new access tokens |
-| API keys | Application | Service keys, PATs, and static bearer tokens issued to users |
-
-## Command Effects on This Deployment
-
-**Expire Session State** — IdP sends `expire`:
+## Session State Diagram {#session-state-diagram}
 
 ~~~ ascii-art
-IdP --expire--> SaaS Application (RP)
-                    |
-                    +-- RP client sessions ......... EXPIRE
-                    +-- Access tokens .............. unchanged
-                    +-- Refresh tokens ............. unchanged
-                    +-- API keys ................... unchanged
+                    +-------------------+
+                    |  Unauthenticated  |<-----------------------+
+                    +-------------------+                        |
+                             |                                   |
+                    (access protected resource)                  |
+                             |                                   |
+                             v                                   |
+                    +-------------------+                        |
+         +--------->|    Establish      |                        |
+         |          +-------------------+                        |
+         |                   |                                   |
+         |          (session established)                        |
+         |                   |                                   |
+         |                   v                                   |
+         |          +-------------------+                        |
+         |          |      Active       |                        |
+         |          +-------------------+                        |
+         |           |    |       |    \                         |
+         |           |    |       |     (user logout)            |
+         |           |    |       |         \                    |
+         |           v    v       v          v                   |
+         |  +---------+ +-----------+ +------------+          |
+         |  | Expired | | Suspended | | Terminated |          |
+         |  +---------+ +-----------+ +------------+          |
+         |       |             |               |                 |
+         +-------+-------------+               +-----------------+
+       (subject returns                   (subject returns
+        to Establish)                      to Unauthenticated)
 ~~~
 
-All of the user's interactive sessions are expired. First-party clients holding valid access tokens or refresh tokens continue to operate. Background API integrations using API keys are unaffected. The user must reauthenticate at the IdP to establish a new session.
+The lifecycle defines three progressive levels of IdP control over RP sessions, plus user-initiated logout:
 
-**Invalidate Authentication State** — IdP sends `invalidate`:
+| Level | State | Trigger | IdP Intent | Tokens & API Keys |
+|-------|-------|---------|-----------|-------------------|
+| **1. Check-back** | **Expired** | Time-based expiry (inactivity or absolute timeout) | "Come back so I can re-evaluate" | Unchanged |
+| **2. Suspend** | **Suspended** | Reestablish Session command | "Get a fresh session — full re-evaluation required" | Unchanged |
+| **3. Terminate** | **Terminated** | Invalidate Authentication State command | "Kill everything — security event" | Invalidated / revoked |
+| — | **Unauthenticated** | User-initiated logout | Subject clears RP state | RP session cleared |
 
-~~~ ascii-art
-IdP --invalidate--> SaaS Application (RP)
-                        |
-                        +-- RP client sessions ......... INVALIDATE
-                        +-- Access tokens .............. INVALIDATE
-                        +-- Refresh tokens ............. INVALIDATE
-                        +-- API keys ................... REVOKE
-                        |
-                        |   1st-Party AS
-                        +-- Revoke refresh tokens at AS
-                        +-- Revoke/invalidate access tokens at AS
-~~~
+## State Descriptions {#session-states}
 
-All authentication artifacts for the subject are invalidated or revoked. Access tokens held by first-party clients will be invalid on next use. Refresh token rotation will fail. API key-based integrations will stop functioning. The user and all automated integrations must reauthenticate at the IdP and obtain new credentials.
+**Unauthenticated:**
+No session exists for the subject at the RP. The subject has not yet authenticated, all prior authentication state has been terminated, or the subject has logged out. This is the initial state, the return state after termination, and the return state after user-initiated logout. {{NIST.SP.800-63B}} §7.1
 
-**Note on deployment:** In this deployment, the SaaS Application is both the RP and the AS. When the RP receives an OP Commands `invalidate` command, it invalidates sessions, tokens, and API keys in a single internal operation. When the RP and AS are separate entities, the RP is still responsible for invalidating all authentication artifacts within its domain upon receiving the command.
+**Establish:**
+The RP has initiated a federation transaction. The subject is redirected to the IdP for authentication. The authentication intent — Session Continuation, Step-Up Authentication, or Forced Reauthentication — depends on how the subject arrived at this state (see Section 3.6). The IdP authenticates the subject (or satisfies the request from an existing session when the authentication intent permits), issues an assertion — an OIDC ID Token or SAML `<Assertion>` — and delivers it to the RP. The RP validates the assertion (signature, issuer, audience, freshness), establishes a local RP client session bound to the assertion, and MAY issue OAuth access tokens and refresh tokens to first-party clients. The subject MAY create API keys. These artifacts collectively form the subject's **authentication state** at the RP. If any validation step fails, the subject remains Unauthenticated. {{NIST.SP.800-63C}} §5–6, {{OIDC.Core}} §3.1.2, {{SAML2.Core}} §3.4, {{NIST.SP.800-63B}} §7.1
+
+**Active:**
+The subject has an established session and is accessing RP resources using the session, tokens, and API keys. The RP enforces session validity, token lifetime, and authorization policy. Token refresh operations extend API access without requiring reauthentication. {{NIST.SP.800-63B}} §7.2
+
+**Expired:**
+The subject's RP client sessions are no longer valid due to time-based expiry. Expiry may be triggered by:
+
+- **Inactivity timeout** — no subscriber activity within the configured timeout period {{NIST.SP.800-63B}} §7.2
+- **Absolute timeout** — maximum session duration reached regardless of activity {{NIST.SP.800-63B}} §7.2
+
+Tokens and API keys remain valid. The subject returns to the Establish state, where the IdP may satisfy the request via **Session Continuation** (reusing the existing IdP session) or **Step-Up Authentication** if the IdP's policy requires it. **Forced Reauthentication** may also be used but is not required. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access. {{OIDC.Core}} §3.1.3.7
+
+**Suspended:**
+The subject's RP client sessions are suspended — expired but with tokens and API keys remaining valid. Unlike the Expired state, the subject MUST return to the Establish state via **Forced Reauthentication** — Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 4.3 for Forced Reauthentication requirements.
+
+A session may be suspended by the **Reestablish Session** command from the IdP, or by RP-specific mechanisms such as account lockout, account recovery, administrative action, or risk-based policy enforcement. This specification defines the IdP-initiated trigger; RP-specific triggers are outside the scope of this specification but produce the same logical state.
+
+**Terminated:**
+All authentication artifacts — sessions, tokens, and API keys — have been invalidated or revoked via the **Invalidate Authentication State** command (SL2). This is the most severe level of IdP control, indicating a security event where prior authentication artifacts should no longer be trusted. The subject returns to the Unauthenticated state and must proceed through Establish via **Forced Reauthentication**. {{NIST.SP.800-63B}} §7.1
+
+## Session State Transitions {#session-transitions}
+
+| From | To | Trigger | Notes |
+|------|----|---------|-------|
+| Unauthenticated | Establish | Subject accesses protected resource | RP initiates federation transaction |
+| Establish | Active | Assertion validated, session created | RP creates session, issues tokens |
+| Establish | Unauthenticated | Assertion validation fails | No session created |
+| Active | Expired | Inactivity timeout or absolute timeout | Time-based triggers (SL1) |
+| Active | Suspended | **Reestablish Session** command | IdP-initiated access revalidation (SL2) |
+| Active | Terminated | **Invalidate Authentication State** command | IdP-initiated security operation (SL2) |
+| Active | Unauthenticated | User-initiated logout | Subject clears RP session state |
+| Expired | Establish | Subject requests access | Session Continuation, Step-Up, or Forced Reauthentication |
+| Suspended | Establish | Subject requests access | Forced Reauthentication ONLY |
+| Terminated | Unauthenticated | *(immediate)* | All artifacts invalidated; must start fresh |
+| Unauthenticated | Establish | Subject requests access | New federation transaction |
+
+## Progressive IdP Control {#session-progressive-control}
+
+The three terminal states — Expired, Suspended, and Terminated — represent a **progressive escalation** of IdP control over the RP session:
+
+| | **Expired** | **Suspended** | **Terminated** |
+|---|---|---|---|
+| **IdP intent** | Periodic check-back | Full access revalidation | Security response |
+| **Sessions** | Expired | Expired | Invalidated |
+| **Tokens** | Unchanged | Unchanged | Invalidated |
+| **API keys** | Unchanged | Unchanged | Revoked |
+| **Authentication intent** | Session Continuation, Step-Up, or Forced Reauthentication | Forced Reauthentication only | Forced Reauthentication only |
+| **IdP session** | May still be valid | MUST NOT be reused | Invalidated |
+| **Returns to** | Establish | Establish | Unauthenticated |
+| **IPSIE level** | SL1+ | SL2+ | SL2+ |
+
+# Authentication Intents {#auth-intents}
+
+When a Relying Party redirects a subject to the Identity Provider, the resulting authentication interaction falls into one of three intents. These intents are orthogonal to protocol mechanics and are derived from the RP's expressed requirements (e.g., `prompt`, `max_age`, `acr_values`) and the IdP's local policy and risk evaluation.
+
+## Session Continuation {#intent-continuation}
+
+**Session Continuation** occurs when a Relying Party requests authentication and the Identity Provider determines that an existing authentication session satisfies the RP's stated authentication freshness and assurance requirements.
+
+In this intent, no new authentication event occurs.
+
+### Properties {#continuation-properties}
+
+When performing Session Continuation:
+
+* An existing IdP authentication session **MUST** exist and remain valid.
+* The IdP **MUST NOT** require the user to perform a new primary authentication ceremony.
+* The existing authentication context, including `auth_time`, `acr`, and `amr`, **MUST** be preserved.
+* New tokens **MAY** be issued to the RP.
+* The IdP **MUST** treat the request as a continuation of the existing authentication session, not as a reauthentication.
+
+### Typical Triggers {#continuation-triggers}
+
+Session Continuation is commonly applicable when:
+
+* An RP session has expired or been terminated locally.
+* The user agent has restarted or lost RP cookies.
+* The RP has performed an RP-local logout.
+* The RP is re-establishing application state.
+
+### Protocol Expression {#continuation-protocol}
+
+An RP requesting Session Continuation **MUST NOT** include `prompt=login` (OIDC) or `ForceAuthn="true"` (SAML). The RP **MAY** use `prompt=none` (OIDC) or `IsPassive="true"` (SAML) to require silent continuation — if no valid IdP session exists, the IdP returns an error rather than prompting the user. The RP also:
+
+* Omits `max_age` or supplies a value satisfied by the existing session.
+* Does not request higher assurance via `acr_values`.
+
+### IdP Behavior {#continuation-idp}
+
+If the IdP determines that the existing authentication session satisfies the RP's requirements, the IdP **MUST** perform Session Continuation.
+
+The IdP **MAY** override Session Continuation and require additional authentication based on risk signals or local policy.
+
+## Step-Up Authentication {#intent-stepup}
+
+**Step-Up Authentication** occurs when the Relying Party requires a higher level of assurance than is provided by the existing authentication session.
+
+In this intent, the IdP performs additional authentication steps sufficient to satisfy the requested assurance level.
+
+### Properties {#stepup-properties}
+
+When performing Step-Up Authentication:
+
+* An existing IdP authentication session **MUST** exist.
+* The IdP **MUST** evaluate whether the current authentication context satisfies the requested assurance.
+* If the assurance is insufficient, the IdP **MUST** require additional authentication.
+* The IdP **MAY** reuse previously satisfied authentication factors.
+* The resulting authentication context **MUST** reflect the updated assurance, including updated `acr`, `amr`, and `auth_time` as appropriate.
+
+### Typical Triggers {#stepup-triggers}
+
+Step-Up Authentication is commonly applicable when:
+
+* Accessing sensitive or privileged resources.
+* Performing high-risk transactions.
+* Responding to increased risk signals (e.g., device change, location change).
+
+### Protocol Expression {#stepup-protocol}
+
+An RP requesting Step-Up Authentication typically:
+
+* Requests a higher assurance level using `acr_values`.
+* Optionally requests specific authentication methods via `claims`.
+
+## Forced Reauthentication {#intent-forced}
+
+**Forced Reauthentication** occurs when the Relying Party explicitly requires a fresh authentication event, regardless of any existing authentication session at the IdP.
+
+In this intent, the existing authentication session **MUST NOT** be reused.
+
+### Properties {#forced-properties}
+
+When performing Forced Reauthentication:
+
+* Any existing authentication session **MUST NOT** satisfy the request.
+* The IdP **MUST** require a new primary authentication ceremony.
+* The resulting authentication context **MUST** have a new `auth_time`.
+* Previous authentication context values **MUST NOT** be relied upon.
+* The RP **MUST** obtain a new session identifier (`sid` in OIDC, `SessionIndex` in SAML).
+
+### Typical Triggers {#forced-triggers}
+
+Forced Reauthentication is commonly applicable when:
+
+* The RP has received a **Reestablish Session** command from the IdP.
+* The RP has received an **Invalidate Authentication State** command from the IdP.
+* An IdP-initiated logout or account recovery has occurred.
+* Regulatory or security policy mandates reauthentication.
+
+### Protocol Expression {#forced-protocol}
+
+An RP requesting Forced Reauthentication **MUST**:
+
+| Protocol | Mechanism | Effect |
+|----------|-----------|--------|
+| **OIDC** | `prompt=login` and/or `max_age=0` | Forces full authentication, disallows SSO session reuse |
+| **SAML** | `ForceAuthn="true"` | Requires new authentication event |
+
+The RP **MUST** validate `auth_time` (OIDC) or `AuthnInstant` (SAML) to confirm that a new authentication occurred. The RP **MUST** verify that the session identifier (`sid` / `SessionIndex`) is different from the prior session. The RP **SHOULD** reject authentications that appear to reuse prior sessions.
+
+## Intent Comparison {#intent-comparison}
+
+| | **Session Continuation** | **Step-Up Authentication** | **Forced Reauthentication** |
+|---|---|---|---|
+| **Purpose** | Reestablish local RP state | Elevate assurance for a specific operation | Access revalidation — IdP re-evaluates policy, risk, and state |
+| **Existing IdP session** | Reused | Reused (with additional factors) | Not reused — new authentication required |
+| **Authentication ceremony** | None | Additional factors only | Full primary authentication |
+| **`auth_time`** | Preserved from existing session | Updated | New |
+| **`acr` / `amr`** | Preserved | Updated to reflect elevated assurance | New — reflects fresh authentication |
+| **Session identifier** | May be same or new | Unchanged | New — MUST differ from prior session |
+| **RP session binding** | New RP session, existing IdP session | Existing RP session preserved | New RP session, new IdP authentication |
+| **Tokens and API keys** | Unchanged | Unchanged | Unchanged (Reestablish Session) or invalidated (Invalidate Authentication State) |
+| **IdP evaluation** | Validates existing session is sufficient | Evaluates assurance requirements | Full policy evaluation — risk, device posture, conditional access, account state |
+| **Initiated by** | RP (no command received) | RP (for a specific operation) | RP (in response to IdP command) |
+
+## Command Requirements {#intent-command-requirements}
+
+Both lifecycle commands defined in this specification require the RP to trigger **Forced Reauthentication** when the subject next interacts with the RP. Session Continuation and Step-Up Authentication are **NOT** sufficient to satisfy either command.
+
+| Command | Required Authentication Intent | Rationale |
+|---------|------------------------------|-----------|
+| **Reestablish Session** | Forced Reauthentication | The IdP must perform a full policy evaluation to determine whether to grant continued access. Reusing an existing session would bypass this evaluation. |
+| **Invalidate Authentication State** | Forced Reauthentication | All prior authentication artifacts are invalidated. A completely new authentication is required. |
+
+When no command has been received — for example, when the RP's local session has expired, cookies have been lost, or the RP has performed an RP-local logout — the RP **MAY** allow Session Continuation. In this case, the RP does not include `prompt=login` or `ForceAuthn="true"`, and the IdP may satisfy the request from an existing authentication session.
+
+## Authentication Intent Requirements by Session State {#session-auth-intents}
+
+The authentication intent used when the subject returns to the Establish state depends on the terminal state and how it was reached.
+
+| Terminal State | Trigger | Allowed Authentication Intents | Rationale |
+|---------------|---------|------------------------------|-----------|
+| **Expired** | Inactivity timeout | Session Continuation, Step-Up, or Forced Reauthentication | IdP session may still be valid; IdP re-evaluates on check-back |
+| **Expired** | Absolute timeout | Session Continuation, Step-Up, or Forced Reauthentication | IdP session may still be valid; IdP re-evaluates on check-back |
+| **Suspended** | Reestablish Session command | **Forced Reauthentication ONLY** | IdP explicitly requires full policy re-evaluation; existing IdP session MUST NOT be reused |
+| **Terminated** | Invalidate Authentication State command | **Forced Reauthentication ONLY** | Security event; all prior artifacts are untrusted; full authentication required |
+| **Unauthenticated** | User-initiated logout | Session Continuation, Step-Up, or Forced Reauthentication | No command received; IdP session may still be valid |
 
 
 # Lifecycle Command Definitions {#commands}
 
-## Expire Session State {#cmd-expire}
+## Reestablish Session {#cmd-reestablish}
 
-An IdP command requiring the RP to expire **all** of the subject's RP client sessions and require reauthentication before continuing. This is the on-demand equivalent of the session expiry behavior at SL1, where the RP expires sessions when the assertion's validity period ends — but triggered by the IdP rather than by a time-based claim.
+An IdP command requiring the RP to expire **all** of the subject's RP client sessions and reestablish them through a full authentication at the IdP. The purpose of this command is **access revalidation** — giving the IdP the opportunity to re-evaluate policy, risk, device posture, account state, and conditional access rules before allowing the subject to continue accessing the RP.
+
+This command transitions the session to the **Suspended** state (see Section 2), which requires **Forced Reauthentication** — Session Continuation and Step-Up Authentication are not sufficient. This is distinct from time-based session expiry (the **Expired** state), where the IdP may satisfy the request via Session Continuation.
 
 **Scope:** All RP client sessions for the subject — browser cookie sessions, native-app session tokens, and any other interactive session state.
 
-### RP Requirements {#expire-rp}
+### RP Requirements {#reestablish-rp}
 
 When an RP receives this command, it **MUST**:
 
 1. Expire all RP client sessions for the subject
 2. Expire all associated session identifiers (delete session cookies, expire native-app session tokens)
-3. Require **reauthentication** at the IdP (see Section 3)
-4. NOT silently re-establish the session using existing tokens or SSO cookies
+3. Require **Forced Reauthentication** at the IdP (see Section 3.3)
+4. NOT silently re-establish the session using existing tokens, SSO cookies, or Session Continuation
 
 The RP **MUST NOT**:
 
@@ -328,13 +504,13 @@ The RP **MUST NOT**:
 - Revoke API keys (service keys, personal access tokens, static bearer tokens)
 - Treat this as authorization revocation or change roles/permissions
 
-### IdP Requirements {#expire-idp}
+### IdP Requirements {#reestablish-idp}
 
 When an IdP sends this command, it **MAY**:
 
 - Expire the IdP SSO session (deployment-dependent)
 
-### Resulting State {#expire-state}
+### Resulting State {#reestablish-state}
 
 | Artifact | State |
 |----------|-------|
@@ -345,25 +521,9 @@ When an IdP sends this command, it **MAY**:
 | IdP SSO session | **MAY** be expired |
 | Authorization grants | **Unchanged** |
 
-### CAEP Events (SL3) {#expire-caep}
-
-At **SL3**, the RP **SHOULD** publish the following CAEP events after processing an Expire Session State command:
-
-| CAEP Event | URI | Purpose |
-|------------|-----|---------|
-| **Session Revoked** | `https://schemas.openid.net/secevent/caep/event-type/session-revoked` | Notify the ecosystem that the subject's RP client session has been expired |
-
-The RP **SHOULD** include the following claims in the `session-revoked` event:
-
-- `sub` — the subject whose session was expired
-- `reason_admin` — indicate that the session was expired at IdP request (e.g., `"Session expired by IdP command"`)
-- `event_timestamp` — the time at which the RP expired the session
-
-The RP **SHOULD NOT** publish `credential-change` events for Expire Session State, as tokens and API keys are unaffected.
-
 ## Invalidate Authentication State {#cmd-invalidate}
 
-An IdP command requiring all existing authentication artifacts to be treated as untrusted, including sessions, access tokens, refresh tokens, and API keys.
+An IdP command requiring all existing authentication artifacts to be treated as untrusted, including sessions, access tokens, refresh tokens, and API keys. This command transitions the session to the **Terminated** state (see Section 2), which invalidates all artifacts and requires **Forced Reauthentication**. This is the most severe level of IdP control, indicating a security event.
 
 **Scope:** All prior authentication state — sessions, tokens, and API keys.
 
@@ -371,12 +531,13 @@ An IdP command requiring all existing authentication artifacts to be treated as 
 
 When an RP receives this command, it **MUST**:
 
-1. Perform all "Expire Session State" steps (Section 2.1.1)
-2. Invalidate all existing access tokens for the subject
-3. Invalidate all existing refresh tokens for the subject
-4. Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)
-5. Require **reauthentication** at the IdP (see Section 3)
-6. Stop any background API operations using existing tokens or API keys
+1. Expire all RP client sessions for the subject
+2. Expire all associated session identifiers (delete session cookies, expire native-app session tokens)
+3. Invalidate all existing access tokens for the subject
+4. Invalidate all existing refresh tokens for the subject
+5. Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)
+6. Require **Forced Reauthentication** at the IdP (see Section 3.3)
+7. Stop any background API operations using existing tokens or API keys
 
 The RP **MUST NOT**:
 
@@ -403,9 +564,29 @@ When an IdP sends this command, it **MUST**:
 | IdP SSO session | **Invalidated** |
 | Authorization grants | **Unchanged** |
 
-### CAEP Events (SL3) {#invalidate-caep}
+## CAEP Events (SL3) {#caep-events}
 
-At **SL3**, the RP **SHOULD** publish the following CAEP events after processing an Invalidate Authentication State command:
+At **SL3**, the RP **SHOULD** publish CAEP events after processing lifecycle commands. This enables downstream Resource Servers and other participants in the SSF stream to stop accepting artifacts for the subject without waiting for token expiry or polling for revocation status.
+
+### Reestablish Session Events {#caep-reestablish}
+
+After processing a Reestablish Session command, the RP **SHOULD** publish:
+
+| CAEP Event | URI | Purpose |
+|------------|-----|---------|
+| **Session Revoked** | `https://schemas.openid.net/secevent/caep/event-type/session-revoked` | Notify the ecosystem that the subject's RP client session has been expired |
+
+The RP **SHOULD** include the following claims in the `session-revoked` event:
+
+- `sub` — the subject whose session was expired
+- `reason_admin` — indicate that session reestablishment was requested (e.g., `"Session reestablishment required by IdP"`)
+- `event_timestamp` — the time at which the RP expired the session
+
+The RP **SHOULD NOT** publish `credential-change` events for Reestablish Session, as tokens and API keys are unaffected.
+
+### Invalidate Authentication State Events {#caep-invalidate}
+
+After processing an Invalidate Authentication State command, the RP **SHOULD** publish:
 
 | CAEP Event | URI | Purpose |
 |------------|-----|---------|
@@ -426,8 +607,6 @@ The RP **SHOULD** publish separate `credential-change` events for each credentia
 | `refresh_token` | `revoke` | Refresh tokens invalidated |
 | `api_key` | `revoke` | API keys revoked |
 
-Publishing these events enables downstream Resource Servers and other participants in the SSF stream to stop accepting artifacts for the subject without waiting for token expiry or polling for revocation status.
-
 ## Command Processing Semantics {#command-semantics}
 
 ### Atomicity {#command-atomicity}
@@ -446,40 +625,14 @@ The RP **MAY** use the `jti` claim (when present) to detect duplicate commands f
 
 ### Command Ordering {#command-ordering}
 
-Invalidate Authentication State is a strict superset of Expire Session State — it includes all session expiry steps plus token invalidation and API key revocation.
+Invalidate Authentication State is a strict superset of Reestablish Session — it includes all session expiry steps plus token invalidation and API key revocation. In the session lifecycle model, Reestablish Session transitions to the **Suspended** state while Invalidate Authentication State transitions to the **Terminated** state (see Section 2.4).
 
 If both commands are received for the same subject:
 
-- **Expire Session State after Invalidate Authentication State:** The RP **MUST** succeed. The resulting state has already been achieved by the prior invalidation — all sessions are already invalidated and tokens revoked. No further action is needed.
-- **Invalidate Authentication State after Expire Session State:** The RP **MUST** process the full Invalidate Authentication State command. Sessions may already be expired, but the RP must additionally invalidate tokens and revoke API keys.
+- **Reestablish Session after Invalidate Authentication State:** The RP **MUST** succeed. The session is already in the Terminated state — all artifacts are invalidated. No further action is needed.
+- **Invalidate Authentication State after Reestablish Session:** The RP **MUST** process the full Invalidate Authentication State command. The session transitions from the Suspended state to the Terminated state. Sessions may already be expired, but the RP must additionally invalidate tokens and revoke API keys.
 
-In general, the RP **SHOULD** apply each command to the current state of the subject's artifacts. A command succeeds if the resulting state defined in Sections 2.1.3 or 2.2.3 is achieved, regardless of what prior state existed.
-
-
-# Reauthentication Requirement {#fresh-auth}
-
-Both commands require the RP to obtain **reauthentication** — a new primary authentication event at the IdP, not reuse of an existing SSO session.
-
-## RP Requirements {#fresh-auth-rp}
-
-The RP **MUST**:
-
-1. Redirect the user to the IdP for authentication
-2. Prevent silent SSO reuse (force user interaction)
-3. Obtain a new authentication assertion or token with a **new session identifier**
-4. Validate that the authentication time is recent and not from a prior session
-5. Establish a new RP client session bound to the new assertion
-
-**Note:** Reauthentication is not an extension of assurance for an existing session — it is a reevaluation of access through a new primary authentication event. The RP MUST obtain a new session identifier from the IdP (e.g., a new `sid` in OIDC or a new `SessionIndex` in SAML) and MUST NOT reuse or extend the prior session. {{NIST.SP.800-63B}} §7.2
-
-## Protocol Controls for Reauthentication {#fresh-auth-controls}
-
-| Protocol | Mechanism | Effect |
-|----------|-----------|--------|
-| **OIDC** | `prompt=login` and/or `max_age=0` | Forces re-authentication, disallows SSO session reuse |
-| **SAML** | `ForceAuthn="true"` | Requires new authentication event |
-
-The RP **MUST** validate `auth_time` (OIDC) or `AuthnInstant` (SAML) to confirm reauthentication. The RP **SHOULD** reject authentications that appear to reuse prior sessions.
+In general, the RP **SHOULD** apply each command to the current state of the subject's artifacts. A command succeeds if the resulting state defined in Sections 4.1.3 or 4.2.3 is achieved, regardless of what prior state existed.
 
 
 # Protocol Mappings {#protocol-mappings}
@@ -488,15 +641,15 @@ A protocol maps to a command only if it can **fully complete** that command. Pro
 
 ## Completeness Requirement {#completeness}
 
-Each command defines a complete resulting state (Sections 2.1.3 and 2.2.3). A protocol implementation **MUST** achieve the full resulting state of a command to claim support for that command. Partial fulfillment is not sufficient.
+Each command defines a complete resulting state (Sections 4.1.3 and 4.2.3). A protocol implementation **MUST** achieve the full resulting state of a command to claim support for that command. Partial fulfillment is not sufficient.
 
-**Implication:** It is acceptable for a protocol to support only one of the two commands. For example, OIDC Back-Channel Logout can fully complete "Expire Session State" but cannot on its own complete "Invalidate Authentication State" (it does not revoke tokens). Similarly, OAuth Token Revocation {{RFC7009}} revokes tokens but does not expire RP client sessions, so it cannot complete either command alone.
+**Implication:** It is acceptable for a protocol to support only one of the two commands. For example, OIDC Back-Channel Logout can fully complete "Reestablish Session" but cannot on its own complete "Invalidate Authentication State" (it does not revoke tokens). Similarly, OAuth Token Revocation {{RFC7009}} revokes tokens but does not expire RP client sessions, so it cannot complete either command alone.
 
-## Expire Session State — Protocol Mappings {#expire-mappings}
+## Reestablish Session — Protocol Mappings {#reestablish-mappings}
 
-The following protocols can **fully complete** the Expire Session State command because they expire the RP client session and trigger reauthentication.
+The following protocols can **fully complete** the Reestablish Session command because they expire the RP client session and require the RP to reestablish it through a full authentication at the IdP.
 
-### OIDC Back-Channel Logout (RECOMMENDED) {#expire-bcl}
+### OIDC Back-Channel Logout (RECOMMENDED) {#reestablish-bcl}
 
 **Specification:** {{OIDC.BackChannelLogout}}
 
@@ -507,17 +660,11 @@ The following protocols can **fully complete** the Expire Session State command 
 | Subject identification | `sub` claim and/or `sid` (session ID) claim |
 | RP behavior | Expire the RP client session(s) matching `sub`/`sid`; do NOT revoke OAuth tokens |
 | IdP SSO session | MAY be expired independently |
-| **Completes command?** | **Yes** — fully satisfies Expire Session State |
+| **Completes command?** | **Yes** — fully satisfies Reestablish Session |
 
-**RP Implementation:**
+See Appendix B for RP implementation steps.
 
-1. Validate the Logout Token signature against IdP JWKS
-2. Verify `iss`, `aud`, `iat`, and `events` claims
-3. Look up local session(s) by `sub` and/or `sid`
-4. Expire matching RP client sessions
-5. On next user interaction, redirect to IdP with `prompt=login`
-
-### OIDC Front-Channel Logout (ACCEPTABLE) {#expire-fcl}
+### OIDC Front-Channel Logout (ACCEPTABLE) {#reestablish-fcl}
 
 **Specification:** {{OIDC.FrontChannelLogout}}
 
@@ -530,7 +677,7 @@ The following protocols can **fully complete** the Expire Session State command 
 
 **Limitations:** Fails if browser is closed, third-party cookies are blocked, or iframes are suppressed. **NOT RECOMMENDED** as sole mechanism.
 
-### SAML 2.0 Single Logout (ACCEPTABLE) {#expire-saml-slo}
+### SAML 2.0 Single Logout (ACCEPTABLE) {#reestablish-saml-slo}
 
 **Specification:** {{SAML2.Profiles}} Section 4.4
 
@@ -543,42 +690,26 @@ The following protocols can **fully complete** the Expire Session State command 
 | SP behavior | Expire the RP client session matching the NameID/SessionIndex; respond with `<LogoutResponse>` |
 | **Completes command?** | **Yes** (back-channel SOAP) / **Conditionally** (front-channel) |
 
-**SP Implementation (back-channel SOAP binding):**
-
-1. Validate `<LogoutRequest>` signature
-2. Verify `Issuer`, `Destination`, `NameID`
-3. Look up local session by `NameID` and `SessionIndex`
-4. Expire matching session
-5. Return `<LogoutResponse>` with `Success` status
-6. On next user interaction, redirect to IdP with `ForceAuthn="true"`
-
 **Limitations:** Front-channel binding is browser-dependent and fragile in multi-SP deployments. SOAP back-channel is more reliable but less widely implemented.
 
-### OpenID Provider Commands: `expire` (RECOMMENDED) {#expire-op-commands}
+See Appendix B for SP implementation steps (back-channel SOAP binding).
+
+### OpenID Provider Commands: `reestablish` (RECOMMENDED) {#reestablish-op-commands}
 
 **Specification:** {{OP-Commands}}
 
-This specification defines a new OP Command type **`expire`** that maps to the Expire Session State lifecycle command.
+This specification defines a new OP Command type **`reestablish`** that maps to the Reestablish Session lifecycle command. See Appendix C for the proposed formal registration.
 
 | Element | Value / Behavior |
 |---------|-----------------|
 | Trigger | IdP sends a Command Token to the RP's registered command endpoint |
-| Command type | `expire` |
+| Command type | `reestablish` |
 | Token type | JWT with `typ: command+jwt`, signed with IdP signing keys |
 | Required claims | `iss`, `aud`, `client_id`, `iat`, `exp`, `jti`, `command`, `tenant`, `sub` |
-| RP behavior | Expire all RP client sessions for the subject; do NOT revoke OAuth tokens; require reauthentication |
-| **Completes command?** | **Yes** — fully satisfies Expire Session State |
+| RP behavior | Expire all RP client sessions for the subject; do NOT revoke OAuth tokens; require full authentication at IdP for session reestablishment |
+| **Completes command?** | **Yes** — fully satisfies Reestablish Session |
 
-**RP Implementation:**
-
-1. Validate Command Token signature against IdP JWKS
-2. Verify `typ` is `command+jwt`
-3. Verify `iss`, `aud`, `iat`, `exp`, `jti`, and `command` claims
-4. Confirm `command` value is `expire`
-5. Look up all sessions by `sub` (and `tenant` if applicable)
-6. Expire all matching RP client sessions
-7. Return success response
-8. On next user interaction, redirect to IdP with `prompt=login`
+See Appendix B for RP implementation steps.
 
 ## Invalidate Authentication State — Protocol Mappings {#revoke-mappings}
 
@@ -586,7 +717,7 @@ This specification defines a new OP Command type **`expire`** that maps to the E
 
 **Specification:** {{OP-Commands}}
 
-The OP Command type **`invalidate`** maps to the Invalidate Authentication State lifecycle command. The `invalidate` command is a **strict superset** of the `expire` command — it includes all session expiry steps defined in Section 4.2.4 plus token invalidation and API key revocation. When the IdP sends `invalidate`, it signals that all prior authentication artifacts for the subject must be treated as untrusted.
+The OP Command type **`invalidate`** maps to the Invalidate Authentication State lifecycle command, transitioning the session to the **Terminated** state. The `invalidate` command is a **strict superset** of the `reestablish` command — it includes all session expiry steps plus token invalidation and API key revocation. When the IdP sends `invalidate`, it signals that all prior authentication artifacts for the subject must be treated as untrusted.
 
 | Element | Value / Behavior |
 |---------|-----------------|
@@ -597,20 +728,7 @@ The OP Command type **`invalidate`** maps to the Invalidate Authentication State
 | RP behavior | Invalidate RP client session, invalidate all existing access and refresh tokens, revoke all API keys for the subject, require reauthentication |
 | **Completes command?** | **Yes** — fully satisfies Invalidate Authentication State |
 
-**RP Implementation:**
-
-1. Validate Command Token signature against IdP JWKS
-2. Verify `typ` is `command+jwt`
-3. Verify `iss`, `aud`, `iat`, `exp`, `jti`, and `command` claims
-4. Confirm `command` value is `invalidate`
-5. Perform all `expire` command steps (Section 4.2.4, steps 5–7): look up and expire all RP client sessions for the subject
-6. Invalidate all existing access tokens for the subject
-7. Invalidate all existing refresh tokens for the subject
-8. Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)
-9. Return success response
-10. On next user interaction, redirect to IdP with `prompt=login`
-
-**Note:** Because `invalidate` is a superset of `expire`, any RP that implements `invalidate` inherently satisfies the Expire Session State command as well. The RP is responsible for invalidating all authentication artifacts within its domain, including any tokens issued by its own Authorization Server. See Section 7 for self-contained JWT access token considerations.
+See Appendix B for RP implementation steps. See Section 7 for self-contained JWT access token considerations.
 
 ### Protocol Comparison {#revoke-protocol-comparison}
 
@@ -670,9 +788,9 @@ The following protocols may be used as **supplementary components** when OP Comm
 
 Both commands are **REQUIRED at SL2**. The following table summarizes which command each protocol can fully complete.
 
-| Protocol | Expire Session State (SL2) | Invalidate Authentication State (SL2) |
+| Protocol | Reestablish Session (SL2) | Invalidate Authentication State (SL2) |
 |----------|---------------------|----------------------------|
-| **OP Commands (`expire`)** | **RECOMMENDED** — completes command | Not applicable |
+| **OP Commands (`reestablish`)** | **RECOMMENDED** — completes command | Not applicable |
 | **OP Commands (`invalidate`)** | Not applicable | **RECOMMENDED** — completes command (sessions + tokens + API keys) |
 | **OIDC Back-Channel Logout** | **RECOMMENDED** — completes command | Session layer only — must compose with token revocation and API key revocation |
 | **OIDC Front-Channel Logout** | ACCEPTABLE — completes conditionally | Session layer only — must compose with token revocation and API key revocation |
@@ -686,12 +804,12 @@ Both commands are **REQUIRED at SL2**. The following table summarizes which comm
 
 Implementations conforming to **SL2** MUST support at least one protocol or protocol combination that **fully completes** each command.
 
-## Expire Session State (SL2 REQUIRED) {#rec-expire}
+## Reestablish Session (SL2 REQUIRED) {#rec-reestablish}
 
 A single protocol can fully complete this command.
 
 **Primary (RECOMMENDED):**
-- OP Commands (`expire`)
+- OP Commands (`reestablish`)
 - OIDC Back-Channel Logout
 
 **Fallback (ACCEPTABLE):**
@@ -711,52 +829,6 @@ When OP Commands is not available, implementations MUST compose protocols to ach
 | RP session | OIDC Back-Channel Logout (RP must additionally invalidate tokens and revoke API keys) |
 | IdP session | IdP-side logout (automatic) |
 | AS-side token revocation | OAuth Token Revocation (RFC 7009) or OAuth Global Token Revocation |
-
-
-# Suggested Protocol Extensions {#extensions}
-
-The following extensions would improve the ability to implement these commands with clear semantics and guaranteed enforcement. These are suggestions for future standardization work.
-
-## OpenID Provider Commands: `expire` Command Registration {#ext-op-expire}
-
-**Problem:** The OP Commands specification defines `invalidate` but does not define a session-only expiry command. The `invalidate` command implies full authentication revocation, which is too broad for the Expire Session State use case.
-
-**Proposed Registration:** Register `expire` as a new OP Command type.
-
-| Field | Value |
-|-------|-------|
-| Command name | `expire` |
-| Command type | Account Command |
-| Description | Expire the subject's RP client session. The RP MUST expire the session and require reauthentication. The RP MUST NOT revoke OAuth tokens. |
-| Required claims | `iss`, `aud`, `client_id`, `iat`, `exp`, `jti`, `command`, `tenant`, `sub` |
-| Lifecycle command | Expire Session State (Section 2.1) |
-
-**Relationship to `invalidate`:**
-
-The `invalidate` command is a **strict superset** of `expire` — it performs all `expire` steps plus token invalidation and API key revocation.
-
-| OP Command | Lifecycle Command | Session | Tokens | API Keys |
-|------------|-------------------|---------|--------|----------|
-| `expire` | Expire Session State | Expire | Unchanged | Unchanged |
-| `invalidate` | Invalidate Authentication State | Invalidate (superset of expire) | Invalidate all | Revoke all |
-
-The RP **MUST** treat `expire` and `invalidate` as distinct commands with different scopes. Receiving `expire` **MUST NOT** trigger token invalidation; receiving `invalidate` **MUST** perform all `expire` steps and additionally invalidate tokens and revoke API keys.
-
-## CAEP: Enforcement Profile for Session Lifecycle {#ext-caep-enforcement}
-
-**Problem:** CAEP events are informational by default. An IdP cannot mandate that an RP act on a `session-revoked` event.
-
-**Suggested Extension:** Define an enforcement profile that:
-
-1. Maps CAEP event types to the commands defined in this specification
-2. Requires the receiver to enforce the mapped command
-3. Requires the receiver to report enforcement status
-
-| CAEP Event | Mapped Command | Enforcement |
-|------------|----------------|-------------|
-| `session-revoked` (reason: `logout`, `timeout`, `step-up`) | Expire Session State | **MUST** expire RP session |
-| `session-revoked` (reason: `policy-violation`, `compromise`) | Invalidate Authentication State | **MUST** invalidate session and tokens, and revoke API keys |
-| `credential-change` | Invalidate Authentication State | **MUST** invalidate session and tokens, and revoke API keys |
 
 
 # Self-Contained JWT Access Token Considerations {#jwt-tokens}
@@ -799,11 +871,202 @@ For "Invalidate Authentication State," implementers **SHOULD** implement on-dema
 
 --- back
 
+# Reference Deployment Model {#deployment-model}
+
+The following diagram illustrates a common SaaS deployment where the Application acts as an RP to the enterprise IdP but also operates its own first-party Authorization Server that issues access tokens and refresh tokens to its own first-party clients (web app, mobile app, CLI).
+
+~~~ ascii-art
++---------------------------------------------------------------------+
+|  Enterprise                                                         |
+|                                                                     |
+|  +-----------------------+                                          |
+|  |  Identity Provider    |                                          |
+|  |  (IdP)                |                                          |
+|  |                       |                                          |
+|  |  +-----------------+  |    Lifecycle Commands                    |
+|  |  | IdP SSO Session |  |- - - - - - - - - - - - - - +            |
+|  |  +-----------------+  |    (reestablish / invalidate)    |            |
+|  +-----------------------+                             v            |
+|                                                                     |
+|  +--------------------------------------------------------------+   |
+|  |  SaaS Application (RP)                                       |   |
+|  |                                                              |   |
+|  |  +----------------------------------------------------------+|   |
+|  |  |  Application Server                                      ||   |
+|  |  |                                                          ||   |
+|  |  |  +-----------------+    +----------------------+         ||   |
+|  |  |  | RP Client       |    | 1st-Party            |         ||   |
+|  |  |  | Sessions        |    | Authorization Server |         ||   |
+|  |  |  |                 |    |                      |         ||   |
+|  |  |  | o Web sessions  |    | o Access tokens      |         ||   |
+|  |  |  | o App sessions  |    | o Refresh tokens     |         ||   |
+|  |  |  +-----------------+    +----------------------+         ||   |
+|  |  |                                                          ||   |
+|  |  |  +-----------------+    +----------------------+         ||   |
+|  |  |  | API Keys        |    | Resource Server(s)   |         ||   |
+|  |  |  |                 |    |                      |         ||   |
+|  |  |  | o Service keys  |    | o APIs               |         ||   |
+|  |  |  | o PATs          |    | o Protected          |         ||   |
+|  |  |  | o Static tokens |    |   resources          |         ||   |
+|  |  |  +-----------------+    +----------------------+         ||   |
+|  |  +----------------------------------------------------------+|   |
+|  +--------------------------------------------------------------+   |
+|                         ^           ^           ^                   |
+|                         |           |           |                   |
+|                    +---------+ +---------+ +---------+              |
+|                    | Web App | | Mobile  | |  CLI    |              |
+|                    |         | |  App    | |         |              |
+|                    +---------+ +---------+ +---------+              |
+|                         1st-Party Clients                           |
++---------------------------------------------------------------------+
+~~~
+
+In this model, the SaaS Application is both:
+
+- A **Relying Party (RP)** that depends on the enterprise IdP for user authentication via SSO
+- A **first-party Authorization Server** that issues its own OAuth access tokens and refresh tokens to its own clients (web app, mobile app, CLI)
+
+The authentication artifacts managed by the SaaS Application include:
+
+| Artifact | Issuer | Description |
+|----------|--------|-------------|
+| RP client sessions | Application | Browser cookie sessions, native-app session tokens |
+| Access tokens | Application (1st-party AS) | Short-lived tokens issued to 1st-party clients for API access |
+| Refresh tokens | Application (1st-party AS) | Long-lived tokens used by 1st-party clients to obtain new access tokens |
+| API keys | Application | Service keys, PATs, and static bearer tokens issued to users |
+
+## Command Effects on This Deployment {#command-effects}
+
+**Reestablish Session** — IdP sends `reestablish`:
+
+~~~ ascii-art
+IdP --reestablish--> SaaS Application (RP)
+                         |
+                         +-- RP client sessions ......... EXPIRE
+                         +-- Access tokens .............. unchanged
+                         +-- Refresh tokens ............. unchanged
+                         +-- API keys ................... unchanged
+~~~
+
+All of the user's interactive sessions are expired. First-party clients holding valid access tokens or refresh tokens continue to operate. Background API integrations using API keys are unaffected. The user must complete a full authentication at the IdP — where the IdP re-evaluates policy, risk, and state — to establish a new session.
+
+**Invalidate Authentication State** — IdP sends `invalidate`:
+
+~~~ ascii-art
+IdP --invalidate--> SaaS Application (RP)
+                        |
+                        +-- RP client sessions ......... INVALIDATE
+                        +-- Access tokens .............. INVALIDATE
+                        +-- Refresh tokens ............. INVALIDATE
+                        +-- API keys ................... REVOKE
+                        |
+                        |   1st-Party AS
+                        +-- Revoke refresh tokens at AS
+                        +-- Revoke/invalidate access tokens at AS
+~~~
+
+All authentication artifacts for the subject are invalidated or revoked. Access tokens held by first-party clients will be invalid on next use. Refresh token rotation will fail. API key-based integrations will stop functioning. The user and all automated integrations must reauthenticate at the IdP and obtain new credentials.
+
+**Note on deployment:** In this deployment, the SaaS Application is both the RP and the AS. When the RP receives an OP Commands `invalidate` command, it invalidates sessions, tokens, and API keys in a single internal operation. When the RP and AS are separate entities, the RP is still responsible for invalidating all authentication artifacts within its domain upon receiving the command.
+
+# Protocol Implementation Details {#appendix-protocol-details}
+
+This appendix provides detailed RP implementation steps for each protocol mapping defined in Section 5. These steps are informational and intended to guide implementers.
+
+## OIDC Back-Channel Logout — RP Implementation {#impl-bcl}
+
+1. Validate the Logout Token signature against IdP JWKS
+2. Verify `iss`, `aud`, `iat`, and `events` claims
+3. Look up local session(s) by `sub` and/or `sid`
+4. Expire matching RP client sessions
+5. On next user interaction, trigger Forced Reauthentication (see Section 3.3)
+
+## SAML 2.0 Single Logout — SP Implementation (Back-Channel SOAP) {#impl-saml-slo}
+
+1. Validate `<LogoutRequest>` signature
+2. Verify `Issuer`, `Destination`, `NameID`
+3. Look up local session by `NameID` and `SessionIndex`
+4. Expire matching session
+5. Return `<LogoutResponse>` with `Success` status
+6. On next user interaction, trigger Forced Reauthentication (see Section 3.3)
+
+## OpenID Provider Commands: `reestablish` — RP Implementation {#impl-op-reestablish}
+
+1. Validate Command Token signature against IdP JWKS
+2. Verify `typ` is `command+jwt`
+3. Verify `iss`, `aud`, `iat`, `exp`, `jti`, and `command` claims
+4. Confirm `command` value is `reestablish`
+5. Look up all sessions by `sub` (and `tenant` if applicable)
+6. Expire all matching RP client sessions
+7. Return success response
+8. On next user interaction, trigger Forced Reauthentication (see Section 3.3)
+
+## OpenID Provider Commands: `invalidate` — RP Implementation {#impl-op-invalidate}
+
+1. Validate Command Token signature against IdP JWKS
+2. Verify `typ` is `command+jwt`
+3. Verify `iss`, `aud`, `iat`, `exp`, `jti`, and `command` claims
+4. Confirm `command` value is `invalidate`
+5. Look up all sessions by `sub` (and `tenant` if applicable)
+6. Expire all matching RP client sessions
+7. Invalidate all existing access tokens for the subject
+8. Invalidate all existing refresh tokens for the subject
+9. Revoke all API keys for the subject (service keys, personal access tokens, static bearer tokens)
+10. Return success response
+11. On next user interaction, trigger Forced Reauthentication (see Section 3.3)
+
+**Note:** Because `invalidate` is a superset of `reestablish`, any RP that implements `invalidate` inherently satisfies the Reestablish Session command as well. The RP is responsible for invalidating all authentication artifacts within its domain, including any tokens issued by its own Authorization Server. See Section 7 for self-contained JWT access token considerations.
+
+
+# Suggested Protocol Extensions {#extensions}
+
+The following extensions would improve the ability to implement these commands with clear semantics and guaranteed enforcement. These are suggestions for future standardization work.
+
+**Note:** The `reestablish` OP Command type is used normatively throughout this specification as the recommended protocol mapping for the Reestablish Session command. This appendix proposes its formal registration with the OP Commands specification.
+
+## OpenID Provider Commands: `reestablish` Command Registration {#ext-op-reestablish}
+
+**Problem:** The OP Commands specification defines `invalidate` but does not define a session reestablishment command. The `invalidate` command implies full authentication revocation, which is too broad for the Reestablish Session use case where the IdP wants to revalidate access without invalidating tokens and API keys.
+
+**Proposed Registration:** Register `reestablish` as a new OP Command type.
+
+| Field | Value |
+|-------|-------|
+| Command name | `reestablish` |
+| Command type | Account Command |
+| Description | Require the RP to expire the subject's session and reestablish it through a full authentication at the IdP. The IdP re-evaluates policy, risk, and state to determine whether to grant continued access. The RP MUST NOT revoke OAuth tokens or API keys. |
+| Required claims | `iss`, `aud`, `client_id`, `iat`, `exp`, `jti`, `command`, `tenant`, `sub` |
+| Lifecycle command | Reestablish Session (Section 4.1) |
+
+**Relationship to `invalidate`:**
+
+The `invalidate` command is a **strict superset** of `reestablish` — it performs all `reestablish` steps plus token invalidation and API key revocation.
+
+| OP Command | Lifecycle Command | Session | Tokens | API Keys |
+|------------|-------------------|---------|--------|----------|
+| `reestablish` | Reestablish Session | Expire + reestablish | Unchanged | Unchanged |
+| `invalidate` | Invalidate Authentication State | Terminated (superset of reestablish) | Invalidate all | Revoke all |
+
+The RP **MUST** treat `reestablish` and `invalidate` as distinct commands with different scopes. Receiving `reestablish` **MUST NOT** trigger token invalidation; receiving `invalidate` **MUST** perform all `reestablish` steps and additionally invalidate tokens and revoke API keys.
+
+## CAEP: Enforcement Profile for Session Lifecycle {#ext-caep-enforcement}
+
+**Problem:** CAEP events are informational by default. An IdP cannot mandate that an RP act on a `session-revoked` event.
+
+**Suggested Extension:** Define an enforcement profile that:
+
+1. Maps CAEP event types to the commands defined in this specification
+2. Requires the receiver to enforce the mapped command
+3. Requires the receiver to report enforcement status
+
+| CAEP Event | Mapped Command | Enforcement |
+|------------|----------------|-------------|
+| `session-revoked` (reason: `logout`, `timeout`, `policy-change`) | Reestablish Session | **MUST** expire RP session and require reestablishment |
+| `session-revoked` (reason: `policy-violation`, `compromise`) | Invalidate Authentication State | **MUST** invalidate session and tokens, and revoke API keys |
+| `credential-change` | Invalidate Authentication State | **MUST** invalidate session and tokens, and revoke API keys |
+
+
 # Change Log {#changelog}
 
 * **Implementer's Draft 1 — 2025-XX-XX**
   * Initial publication
-  * Defines two lifecycle commands: Expire Session State and Invalidate Authentication State
-  * Comprehensive protocol mappings for OIDC, SAML, OAuth, Shared Signals
-  * Suggested protocol extensions for command type signaling
-  * Reauthentication requirements and JWT token considerations
