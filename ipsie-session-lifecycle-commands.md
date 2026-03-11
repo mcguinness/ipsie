@@ -201,6 +201,9 @@ An authentication intent in which the RP requests authentication and the IdP det
 **Step-Up Authentication**
 An authentication intent in which the RP requires a higher level of assurance than is provided by the existing authentication session. The IdP evaluates whether the current authentication context satisfies the requested assurance and, if insufficient, requires additional authentication. The resulting authentication context reflects the updated assurance, including updated `acr`, `amr`, and `auth_time` as appropriate. See Section 3 for the full definition of authentication intents. {{NIST.SP.800-63B}} §7.2
 
+**User Presence**
+An authentication intent in which the RP requires the subject to actively confirm they are present at the session, without requiring a full primary authentication ceremony or elevated assurance. The subject performs a lightweight presence gesture such as touching a security key, completing a biometric scan, entering a PIN, or acknowledging a push notification. The RP signals this intent by requesting `acr_values="urn:ipsie:acr:presence"` (OIDC) or an equivalent `AuthnContextClassRef` (SAML). The returned `acr` **MUST** equal `urn:ipsie:acr:presence` and `auth_time` **MUST** reflect the time of the presence confirmation. The `amr` claim reflects the specific gesture performed. See Section 3 for the full definition of authentication intents. {{NIST.SP.800-63B}} §7.2
+
 **Refresh Token**
 A credential issued by an Authorization Server that a client uses to obtain new access tokens without requiring the resource owner to reauthenticate. Refresh tokens are typically long-lived and revocable. {{RFC6749}} §1.5
 
@@ -248,32 +251,34 @@ The IdP and RP manage sessions independently of each other. The federation proto
 ## Session State Diagram {#session-state-diagram}
 
 ~~~ ascii-art
-                    +-------------------+
-                    |  Unauthenticated  |<-----------------------+
-                    +-------------------+                        |
-                             |                                   |
-                    (access protected resource)                  |
-                             |                                   |
-                             v                                   |
-                    +-------------------+                        |
-         +--------->|    Established    |                        |
-         |          +-------------------+                        |
-         |                   |                                   |
-         |          (session established)                        |
-         |                   |                                   |
-         |                   v                                   |
-         |          +-------------------+                        |
-         |          |      Active       |                        |
-         |          +-------------------+                        |
-         |               |            |                           |
-         |               v            v                           |
-         |        +---------+  +------------+                     |
-         |        | Expired |  | Terminated |                     |
-         |        +---------+  +------------+                     |
-         |             |              |                           |
-         +-------------+              +---------------------------+
-       (subject returns            (subject returns
-        to Established)             to Unauthenticated)
+          +-------------------+
+          |  Unauthenticated  |
+          +-------------------+
+                   |
+           [authenticate]
+                   v
+          +-------------------+<---+
+          |    Established    |    |
+          +-------------------+    |
+                   |               |
+           [session created]       |
+                   v               |
+          +-------------------+    |
+          |      Active       |    |
+          +-------------------+    |
+               |         |         |
+    [expiry or |         | [logout or
+    reestablish]         |  invalidate]
+               v         v         |
+        +---------+  +----------+  |
+        | Expired |->|Terminated|  |
+        +---------+  +----------+  |
+               |                   |
+               +-[re-auth w/IdP]---+
+
+  Expired    --> Established     (re-authenticate with IdP; session authority retained)
+  Expired    --> Terminated      (invalidated or abandoned; session authority cleared)
+  Terminated --> Unauthenticated (session authority cleared)
 ~~~
 
 The lifecycle defines four progressive levels of Identity Service control over RP sessions:
@@ -291,7 +296,7 @@ The lifecycle defines four progressive levels of Identity Service control over R
 No session exists for the subject at the RP. The subject has not yet authenticated or all prior authentication state has been terminated. This is the initial state and the return state after Terminated. {{NIST.SP.800-63B}} §7.1
 
 **Established:**
-The RP has initiated a federation transaction. The subject is redirected to the IdP for authentication. The authentication intent (Session Continuation, Step-Up Authentication, or Forced Reauthentication) depends on how the subject arrived at this state (see Section 3.6). The IdP authenticates the subject (or satisfies the request from an existing session when the authentication intent permits), issues an assertion (an OIDC ID Token or SAML `<Assertion>`), and delivers it to the RP. The RP validates the assertion (signature, issuer, audience, freshness), establishes a local RP client session bound to the assertion, and MAY issue OAuth access tokens and refresh tokens to first-party clients. The subject MAY create API keys. These artifacts collectively form the subject's **authentication state** at the RP. If any validation step fails, the subject remains Unauthenticated. {{NIST.SP.800-63C}} §5–6, {{OIDC.Core}} §3.1.2, {{SAML2.Core}} §3.4, {{NIST.SP.800-63B}} §7.1
+The RP has received and successfully validated an assertion from the IdP. Prior to this state, the RP redirected the subject to the IdP; the IdP authenticated the subject (using an intent of Session Continuation, User Presence, Step-Up Authentication, or Forced Reauthentication depending on context — see Section 3.7) and issued an assertion (an OIDC ID Token or SAML `<Assertion>`). Upon receiving the assertion, the RP validates it (signature, issuer, audience, freshness), records the session authority (`iss`, `sub`, and optionally `sid`), establishes a local RP client session bound to the assertion, and MAY issue OAuth access tokens and refresh tokens to first-party clients. The subject MAY create API keys. These artifacts collectively form the subject's **authentication state** at the RP. If any validation step fails, the subject returns to Unauthenticated. {{NIST.SP.800-63C}} §5–6, {{OIDC.Core}} §3.1.2, {{SAML2.Core}} §3.4, {{NIST.SP.800-63B}} §7.1
 
 **Active:**
 The subject has an established session and is accessing RP resources using the session, tokens, and API keys. The session authority is fixed for the lifetime of the session: the RP MUST NOT accept assertions from a different Identity Service to continue this session. The RP enforces session validity, token lifetime, and authorization policy. Token refresh operations extend API access without requiring reauthentication. {{NIST.SP.800-63B}} §7.2
@@ -304,8 +309,8 @@ The subject's RP client sessions are no longer valid due to time-based expiry. E
 
 Tokens and API keys remain valid. The session authority is retained, so the RP redirects the subject to the same Identity Service that established the session without requiring IdP discovery. The subject returns to the Established state. The authentication intent depends on how the session expired:
 
-- **Time-based expiry:** The IdP may satisfy the request via **Session Continuation**, **Step-Up Authentication**, or **Forced Reauthentication** depending on its policy. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access.
-- **Reestablish Session command:** The Identity Service explicitly requires **Forced Reauthentication**. Session Continuation and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 3.3 for Forced Reauthentication requirements.
+- **Time-based expiry:** The IdP may satisfy the request via **Session Continuation**, **User Presence**, **Step-Up Authentication**, or **Forced Reauthentication** depending on its policy and the RP's expressed requirements. This is the IdP's opportunity to periodically re-evaluate whether the subject should continue to have access.
+- **Reestablish Session command:** The Identity Service explicitly requires **Forced Reauthentication**. Session Continuation, User Presence, and Step-Up Authentication are NOT sufficient. The IdP re-evaluates policy, risk, device posture, account state, and conditional access rules before deciding whether to issue a new assertion. See Section 3.3 for Forced Reauthentication requirements.
 
 {{OIDC.Core}} §3.1.3.7
 
@@ -332,6 +337,55 @@ In both cases the session authority is cleared. The subject returns to the Unaut
 | Expired | Established | Subject requests access | Authentication intent depends on trigger (see Section 2) |
 | Terminated | Unauthenticated | *(immediate)* | Session authority cleared; subject may select a different IdP |
 
+## Session Authentication Sequence {#session-sequence}
+
+The following sequence diagram shows the interactions between the Subject (browser), RP, and Identity Service (Session Authority) across all four levels of IdP control. SSO flows through the Subject's browser via redirects; lifecycle commands arrive via back-channel from the Identity Service.
+
+~~~ ascii-art
+ Subject/Browser         RP                   IdP (Session Authority)
+       |                  |                            |
+  [Initial Sign-On]       |                            |
+       |                  |                            |
+       |--- access ------>|                            |
+       |<-- redirect -----|  (302 to IdP)              |
+       |                  |                            |
+       |-- auth request --|--------------------------->|
+       |                  |                   [authenticate]
+       |<-----------------|-- assertion (redirect) ----|
+       |                  |                            |
+       |--- callback ---->|                            |
+       |                  | [Established -> Active]    |
+       |<-- session ------|                            |
+       |                  |                            |
+  [Reestablish Session Command]                        |
+       |                  |                            |
+       |                  |<-- reestablish ------------|
+       |                  | [Active -> Expired]        |
+       |                  |                            |
+       |--- access ------>|                            |
+       |<-- redirect -----|  (Forced Reauthentication) |
+       |                  |                            |
+       |-- auth request --|--- (forced) -------------->|
+       |                  |   [re-evaluate; re-authenticate]
+       |<-----------------|-- assertion (redirect) ----|
+       |                  |                            |
+       |--- callback ---->|                            |
+       |                  | [Established -> Active]    |
+       |<-- session ------|                            |
+       |                  |                            |
+  [Logout Command]         |                            |
+       |                  |                            |
+       |                  |<-- logout signal -----------|
+       |                  | [Active -> Terminated]     |
+       |                  | (tokens preserved)         |
+       |                  |                            |
+  [Invalidate Access Command]                          |
+       |                  |                            |
+       |                  |<-- invalidate -------------|
+       |                  | [Active -> Terminated]     |
+       |                  | (all artifacts revoked)    |
+~~~
+
 ## Progressive IdP Control {#session-progressive-control}
 
 The Identity Service has four progressive levels of control over RP sessions:
@@ -343,7 +397,7 @@ The Identity Service has four progressive levels of control over RP sessions:
 | **Sessions** | Expired | Expired | Terminated | Terminated |
 | **Tokens** | Unchanged | Unchanged | Unchanged | Invalidated |
 | **API keys** | Unchanged | Unchanged | Unchanged | Revoked |
-| **Authentication intent** | Session Continuation, Step-Up, or Forced Reauthentication | Forced Reauthentication only | Forced Reauthentication only | Forced Reauthentication only |
+| **Authentication intent** | Session Continuation, User Presence, Step-Up, or Forced Reauthentication | Forced Reauthentication only | Forced Reauthentication only | Forced Reauthentication only |
 | **IdP session** | May still be valid | MUST require new authentication ceremony; MAY use existing session context | MAY be terminated | Invalidated |
 | **Session authority** | Retained; redirects to same IdP | Retained; redirects to same IdP | Cleared; subject may select a different IdP | Cleared; subject may select a different IdP |
 | **Returns to** | Established | Established | Unauthenticated | Unauthenticated |
@@ -351,7 +405,7 @@ The Identity Service has four progressive levels of control over RP sessions:
 
 # Authentication Intents {#auth-intents}
 
-When a Relying Party redirects a subject to the Identity Provider, the resulting authentication interaction falls into one of three intents. These intents are orthogonal to protocol mechanics and are derived from the RP's expressed requirements (e.g., `prompt`, `max_age`, `acr_values`) and the IdP's local policy and risk evaluation.
+When a Relying Party redirects a subject to the Identity Provider, the resulting authentication interaction falls into one of four intents. These intents are orthogonal to protocol mechanics and are derived from the RP's expressed requirements (e.g., `prompt`, `max_age`, `acr_values`) and the IdP's local policy and risk evaluation.
 
 ## Session Continuation {#intent-continuation}
 
@@ -390,6 +444,56 @@ An RP requesting Session Continuation **MUST NOT** include `prompt=login` (OIDC)
 If the IdP determines that the existing authentication session satisfies the RP's requirements, the IdP **MUST** perform Session Continuation.
 
 The IdP **MAY** override Session Continuation and require additional authentication based on risk signals or local policy.
+
+## User Presence {#intent-presence}
+
+**User Presence** occurs when the Relying Party requires the subject to actively confirm they are present at the session, without requiring a full primary authentication ceremony or an elevated assurance level.
+
+In this intent, the subject performs a lightweight presence gesture. The existing authentication session is preserved, but the subject must actively interact to confirm presence. User Presence is stronger than Session Continuation (which requires no user interaction) but weaker than Step-Up Authentication (which elevates assurance) and Forced Reauthentication (which requires a full ceremony).
+
+### Properties {#presence-properties}
+
+When performing User Presence:
+
+* An existing IdP authentication session **MUST** exist and remain valid.
+* The IdP **MUST** require the subject to perform an active presence gesture (e.g., touch a security key, complete a biometric scan, enter a PIN, or acknowledge a push notification).
+* The presence gesture **MUST NOT** constitute a full primary authentication ceremony.
+* The existing `acr` **MUST** be set to `urn:ipsie:acr:presence` in the issued assertion to reflect the presence confirmation.
+* The `amr` claim **MUST** reflect the specific gesture performed (e.g., `hwk`, `fpt`, `pin`).
+* `auth_time` **MUST** be updated to reflect the time of the presence confirmation.
+* New tokens **MAY** be issued to the RP.
+* The session identifier **MUST** remain the same.
+
+### Typical Triggers {#presence-triggers}
+
+User Presence is commonly applicable when:
+
+* The subject has been idle for a period that warrants a lightweight confirmation of presence.
+* A sensitive operation requires recent proof of presence without full reauthentication.
+* Risk signals (e.g., idle time, screen lock, location shift) suggest the user should confirm they are still at the device.
+* Regulatory or policy requirements mandate proof of presence at a specific interval without mandating full reauthentication.
+
+### Protocol Expression {#presence-protocol}
+
+An RP requesting User Presence requests a defined presence ACR value:
+
+| Protocol | Request Mechanism | Response |
+|----------|-------------------|----------|
+| **OIDC** | `acr_values="urn:ipsie:acr:presence"` | `acr` = `urn:ipsie:acr:presence`; `amr` reflects the gesture |
+| **SAML** | `AuthnContextClassRef` = `urn:ipsie:acr:presence` | `AuthnContextClassRef` in the assertion reflects the same value |
+
+The RP **MUST NOT** include `prompt=login` or `ForceAuthn="true"`, as those require Forced Reauthentication. The RP **MUST NOT** include `prompt=none` or `IsPassive="true"`, as those prohibit user interaction.
+
+The RP **MUST** verify that the returned `acr` equals `urn:ipsie:acr:presence` (or higher) and that `auth_time` reflects the time of the presence confirmation.
+
+### IdP Behavior {#presence-idp}
+
+When the RP requests `acr_values="urn:ipsie:acr:presence"`:
+
+* The IdP **MUST** prompt the subject for a presence gesture if the existing session does not already satisfy `urn:ipsie:acr:presence` within the required timeframe.
+* The IdP **MUST NOT** silently reuse the existing session without a presence gesture (i.e., **MUST NOT** perform Session Continuation).
+* The IdP **MUST NOT** require a full primary authentication ceremony solely to satisfy a User Presence request.
+* The IdP **MAY** escalate to Step-Up Authentication or Forced Reauthentication based on risk signals or local policy.
 
 ## Step-Up Authentication {#intent-stepup}
 
@@ -460,21 +564,23 @@ The RP **MUST** validate `auth_time` (OIDC) or `AuthnInstant` (SAML) to confirm 
 
 ## Intent Comparison {#intent-comparison}
 
-| | **Session Continuation** | **Step-Up Authentication** | **Forced Reauthentication** |
-|---|---|---|---|
-| **Purpose** | Reestablish local RP state | Elevate assurance for a specific operation | Access revalidation. IdP re-evaluates policy, risk, and state |
-| **Existing IdP session** | Reused | Reused (with additional factors) | Not reused. New authentication required |
-| **Authentication ceremony** | None | Additional factors only | Full primary authentication |
-| **`auth_time`** | Preserved from existing session | Updated | New |
-| **`acr` / `amr`** | Preserved | Updated to reflect elevated assurance | New. Reflects fresh authentication |
-| **Session identifier** | May be same or new | Unchanged | New. MUST differ from prior session |
-| **RP session binding** | New RP session, existing IdP session | Existing RP session preserved | New RP session, new IdP authentication |
-| **IdP evaluation** | Validates existing session is sufficient | Evaluates assurance requirements | Full policy evaluation: risk, device posture, conditional access, account state |
-| **Initiated by** | RP (no command received) | RP (for a specific operation) | RP (in response to IdP command or RP-local policy) |
+| | **Session Continuation** | **User Presence** | **Step-Up Authentication** | **Forced Reauthentication** |
+|---|---|---|---|---|
+| **Purpose** | Reestablish local RP state | Confirm subject is present at the device | Elevate assurance for a specific operation | Access revalidation. IdP re-evaluates policy, risk, and state |
+| **Existing IdP session** | Reused | Reused | Reused (with additional factors) | Not reused. New authentication required |
+| **Authentication ceremony** | None | Presence gesture only | Additional factors only | Full primary authentication |
+| **`auth_time`** | Preserved from existing session | Updated to presence confirmation time | Updated | New |
+| **`acr`** | Preserved | `urn:ipsie:acr:presence` | Updated to reflect elevated assurance | New. Reflects fresh authentication |
+| **`amr`** | Preserved | Reflects the specific gesture (e.g., `hwk`, `fpt`, `pin`) | Updated to reflect elevated assurance | New. Reflects fresh authentication |
+| **Session identifier** | May be same or new | Unchanged. MUST remain the same | Unchanged | New. MUST differ from prior session |
+| **RP session binding** | New RP session, existing IdP session | Existing RP session preserved | Existing RP session preserved | New RP session, new IdP authentication |
+| **IdP evaluation** | Validates existing session is sufficient | Validates presence gesture; session not re-established | Evaluates assurance requirements | Full policy evaluation: risk, device posture, conditional access, account state |
+| **Request signal** | No `prompt=login`; no elevated `acr_values` | `acr_values="urn:ipsie:acr:presence"` | Elevated `acr_values` | `prompt=login` / `ForceAuthn="true"` |
+| **Initiated by** | RP (no command received) | RP (for presence-sensitive operations or idle confirmation) | RP (for a specific operation) | RP (in response to IdP command or RP-local policy) |
 
 ## Command Requirements {#intent-command-requirements}
 
-Both lifecycle commands defined in this specification require the RP to trigger **Forced Reauthentication** when the subject next interacts with the RP. Session Continuation and Step-Up Authentication are **NOT** sufficient to satisfy either command.
+Both lifecycle commands defined in this specification require the RP to trigger **Forced Reauthentication** when the subject next interacts with the RP. Session Continuation, User Presence, and Step-Up Authentication are **NOT** sufficient to satisfy either command.
 
 | Command | Required Authentication Intent | Rationale |
 |---------|------------------------------|-----------|
@@ -489,7 +595,7 @@ The authentication intent used when the subject returns to the Established state
 
 | Prior Session State | Trigger | Allowed Authentication Intents | Rationale |
 |--------------------|---------|------------------------------|-----------|
-| **Expired** | Inactivity timeout or absolute timeout | Session Continuation, Step-Up, or Forced Reauthentication | IdP session may still be valid; IdP re-evaluates on check-back |
+| **Expired** | Inactivity timeout or absolute timeout | Session Continuation, User Presence, Step-Up, or Forced Reauthentication | IdP session may still be valid; IdP re-evaluates on check-back; RP MAY request presence confirmation for sensitive operations |
 | **Expired** | Reestablish Session command | **Forced Reauthentication ONLY** | Identity Service explicitly requires full policy re-evaluation; RP MUST use `prompt=login` / `ForceAuthn="true"`; IdP MUST require new authentication ceremony |
 | **Terminated** | Logout (user, admin, policy, or system-initiated) | **Forced Reauthentication ONLY** | Session ended; subject must re-authenticate through the Identity Service |
 | **Terminated** | Invalidate Access command | **Forced Reauthentication ONLY** | Security event; all prior artifacts are untrusted; full authentication required |
